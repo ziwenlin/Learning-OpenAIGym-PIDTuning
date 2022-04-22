@@ -1,33 +1,31 @@
-import Controllers
-import Settings
 import gym
+import Settings
+import Controllers
+
 
 PRESET_PID_CART = (0, 0, 0)
-# PRESET_PID_CART = (-0.924861051852458, 0.03002569629632385, -0.2994526736003437)
-# PRESET_PID_CART = (-0.924861051852458, 0.03002569629632385, -0.3848792315820444)
-
-PRESET_PID_POLE = (0, 0, 0)
-PRESET_PID_POLE = (-1.8394291134013734, 0.20138629211940734, -5.200392703676353)
-# PRESET_PID_POLE = (-4.512285277021222, 3.7468386916186502, 7.743010122805896)
+PRESET_PID_CART = (-1.2978, -0.0252, -0.8364)
+PRESET_PID_CART = (-1.8086, -0.0327, -0.7587)
 
 
-env = gym.make('CartPole-v1')
+env = gym.make('MountainCar-v0')
 logger = Controllers.Logger()
 
-pole_agent = Controllers.PID_Learning_Controller(PRESET_PID_POLE)
 cart_agent = Controllers.PID_Learning_Controller(PRESET_PID_CART)
-# agent = cart_agent
-# agent.name = 'CART'
-agent = pole_agent
-agent.name = 'POLE'
-sum_reward = 0
+agent = cart_agent
+agent.name = 'CART'
+# agent = pole_agent
+# agent.name = 'POLE'
+sum_reward = 0.0
 
 
 def action_space(output):
-    if output > 0:
-        action = 1
-    else:
+    if output > 1:
+        action = 2
+    elif output < -1:
         action = 0
+    else:
+        action = 1
     return action
 
 
@@ -37,11 +35,15 @@ for i_episode in range(Settings.EPISODES):
         if (i_episode + 1) % Settings.EPISODE_SHOW == 0:
             env.render()
         output = 0
-        output += pole_agent.get_output(observation[2], 0.0)
-        # output += cart_agent.get_output(observation[0], -0.50)
+        # output += pole_agent.get_output(observation[2], 0.0)
+        if observation[1] < 0:
+            output += cart_agent.get_output(observation[0], 0.6)
+        elif observation[1] > 0:
+            output += cart_agent.get_output(observation[0], -1.2)
         action = action_space(output)
         observation, reward, done, info = env.step(action)
-        # reward -= (observation[0] - 0.50) ** 2 * 10
+        reward -= abs(observation[0] - 0.50)
+        reward += abs(observation[1] * 100)
         sum_reward += reward
         if done:
             if (i_episode + 1) % Settings.EPISODE_PRINT == 0 or (i_episode + 1) % Settings.EPISODE_SHOW == 0:
@@ -53,7 +55,7 @@ for i_episode in range(Settings.EPISODES):
 
     agent.reward(sum_reward)
     logger.monitor(sum_reward)
-    sum_reward = 0
+    sum_reward = 0.0
     if (i_episode + 1) % Settings.EPISODE_LEARN == 0:
         logger.process(i_episode + 1, Settings.EPSILON, Settings.MULTIPLIER_EPSILON)
         agent.reflect()
