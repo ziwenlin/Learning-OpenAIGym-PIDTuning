@@ -1,3 +1,5 @@
+import abc
+
 import gym
 import numpy as np
 
@@ -32,17 +34,37 @@ class PID_Controller:
         self.derivative = 0
         self.integral = 0
 
-    def get_string(self):
-        return f'{tuple(float("{:.4f}".format(x)) for x in self.get_control())}'
+
+class Learning_Controller:
+    name = ''
+
+    @abc.abstractmethod
+    def explore(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def reflect(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def reward(self, reward):
+        pass
+
+    @abc.abstractmethod
+    def get_string(self) -> str:
+        return ''
 
 
-class PID_Learning_Controller(PID_Controller):
+class PID_Learning_Controller(PID_Controller, Learning_Controller):
     def __init__(self, preset=(0, 0, 0)):
         super().__init__(preset)
         self.current_rewards = []
         self.current_control = self.get_control()
         self.previous_rewards = []
         self.previous_control = self.get_control()
+
+    def get_string(self):
+        return f'{tuple(float("{:.4f}".format(x)) for x in self.get_control())}'
 
     def explore(self):
         previous_control = self.previous_control
@@ -89,6 +111,19 @@ class PID_Learning_Controller(PID_Controller):
         self.current_rewards.append(reward)
 
 
+class Decider:
+    def __init__(self, env: gym.Env):
+        self.action_space = env.action_space
+
+    @abc.abstractmethod
+    def get_action(self, observation: gym.core.ObsType) -> gym.core.ActType:
+        return self.action_space.sample()
+
+    @abc.abstractmethod
+    def get_reward(self, observation: gym.core.ObsType) -> float:
+        return 0
+
+
 class Logger:
     def __init__(self):
         self.rewards = []
@@ -116,27 +151,27 @@ class Logger:
         Multiplier: {multiplier}
         '''
 
-
     def monitor(self, reward):
         self.rewards.append(reward)
 
     def process(self, episode, epsilon, multiplier):
-        self.epsilons. append(epsilon)
+        self.epsilons.append(epsilon)
         self.multipliers.append(multiplier)
         self.episodes.append(episode)
         rewards = self.rewards
-        self.averages.append(sum(rewards)/len(rewards))
+        self.averages.append(sum(rewards) / len(rewards))
         self.maximums.append(max(rewards))
         self.minimums.append(min(rewards))
         self.rewards.clear()
 
+
 class Environment:
-    def __init__(self, environment: str, agent: PID_Learning_Controller, name: str):
-        self.env = gym.make(environment)
+    def __init__(self, environment: gym.Env, learner: Learning_Controller, decider: Decider):
+        self.env = environment
+        self.decider = decider
         self.logger = Logger()
 
-        self.agent = agent
-        self.agent.name = name
+        self.learner = learner
 
         self.episode = 1
         self.running = False
@@ -149,40 +184,39 @@ class Environment:
         self.running = False
         self.env.close()
 
-    def step_single(self):
+    def step_episode(self):
         episode = self.episode
         observation = self.env.reset()
         for time_steps in range(Settings.TIME_STEPS):
-            if (self.episode + 1) % Settings.EPISODE_SHOW == 0:
+            if episode % Settings.EPISODE_SHOW == 0:
                 self.env.render()
-            output = 0
-            output += pole_agent.get_output(observation[2], 0.0)
-            # output += cart_agent.get_output(observation[0], -0.50)
-            action = action_space(output)
+
+            action = self.decider.get_action(observation)
             observation, reward, done, info = self.env.step(action)
-            # reward -= (observation[0] - 0.50) ** 2 * 10
+            reward += self.decider.get_reward(observation)
+
             self.rewards += reward
             if done:
-                if (self.episode + 1) % Settings.EPISODE_PRINT == 0 or (self.episode + 1) % Settings.EPISODE_SHOW == 0:
-                    print("Episode {} finished after {} timesteps".format(self.episode + 1, time_steps + 1))
+                if episode % Settings.EPISODE_PRINT == 0 or episode % Settings.EPISODE_SHOW == 0:
+                    print("Episode {} finished after {} timesteps".format(episode, time_steps + 1))
                 break
         else:
-            if (self.episode + 1) % Settings.EPISODE_PRINT == 0 or (self.episode + 1) % Settings.EPISODE_SHOW == 0:
-                print("Episode {} finished after {} timesteps".format(self.episode + 1, Settings.TIME_STEPS))
+            if episode % Settings.EPISODE_PRINT == 0 or episode % Settings.EPISODE_SHOW == 0:
+                print("Episode {} finished after {} timesteps".format(episode, Settings.TIME_STEPS))
 
-    def step_episode(self):
+    def step_end(self):
         logger = self.logger
-        agent = self.agent
+        learner = self.learner
         episode = self.episode
 
-        agent.reward(self.rewards)
+        learner.reward(self.rewards)
         logger.monitor(self.rewards)
         self.rewards = 0
 
         if episode % Settings.EPISODE_LEARN == 0:
             logger.process(episode, Settings.EPSILON, Settings.MULTIPLIER_EPSILON)
-            agent.reflect()
-            agent.explore()
+            learner.reflect()
+            learner.explore()
 
         if Settings.MULTIPLIER_EPSILON > 1.0:
             Settings.MULTIPLIER_EPSILON *= Settings.EPSILON_DECAY
@@ -191,8 +225,9 @@ class Environment:
 
         if episode % Settings.EPISODE_SHOW == 0:
             log = logger.get_log()
-            log += f'PRESET_PID_{agent.name} = {agent.get_string()}' + '\n'
+            log += f'{self.learner.name} = {learner.get_string()}' + '\n'
             print(log)
 
         if episode > Settings.EPISODES:
             self.stop()
+        self.episode += 1
