@@ -1,4 +1,6 @@
 import abc
+import textwrap
+from typing import List
 
 import gym
 import numpy as np
@@ -54,10 +56,15 @@ class Learning_Controller:
     def get_string(self) -> str:
         return ''
 
+    @abc.abstractmethod
+    def reset(self):
+        pass
 
-class PID_Learning_Controller(PID_Controller, Learning_Controller):
-    def __init__(self, preset=(0, 0, 0)):
+
+class Learning_PID_Controller(PID_Controller, Learning_Controller):
+    def __init__(self, preset=(0, 0, 0), name=''):
         super().__init__(preset)
+        self.name = name
         self.current_rewards = []
         self.current_control = self.get_control()
         self.previous_rewards = []
@@ -70,10 +77,10 @@ class PID_Learning_Controller(PID_Controller, Learning_Controller):
         previous_control = self.previous_control
         new_control = list(self.current_control)
 
-        # Todo make explore progress comparison
+        # Todo make explore progress comparison than to do it randomly
         for i in range(len(new_control)):
-            improve = (np.random.rand() - 0.5) * Settings.MULTIPLIER_IMPROVE * Settings.MULTIPLIER_EPSILON
-            if previous_control[i] == new_control[i]:
+            improve = Settings.MULTIPLIER_IMPROVE * Settings.MULTIPLIER_EPSILON
+            if previous_control[i] != new_control[i]:
                 if np.random.rand() > Settings.EPSILON:
                     new_control[i] += (new_control[i] - previous_control[i]) * improve
                     break
@@ -111,7 +118,55 @@ class PID_Learning_Controller(PID_Controller, Learning_Controller):
         self.current_rewards.append(reward)
 
 
-class Decider:
+class Multi_Learning_Controller(Learning_Controller):
+    def __init__(self):
+        self.controllers: List[Learning_Controller] = []
+        self.selected: Learning_Controller = Learning_Controller()
+        self.is_rotating = False
+        self.index = 0
+        self.previous_rewards = []
+        self.current_rewards = []
+
+    def add_controller(self, controller: Learning_Controller):
+        self.controllers.append(controller)
+        if not len(self.controllers) > 1:
+            self.select_controller(0)
+
+    def select_controller(self, index):
+        if len(self.controllers) <= index:
+            index = 0
+        self.index = index
+        self.selected = self.controllers[index]
+        self.name = self.selected.name
+
+    def get_string(self) -> str:
+        return self.selected.get_string()
+
+    def next_controller(self):
+        self.select_controller(self.index + 1)
+
+    def explore(self) -> None:
+        self.selected.explore()
+
+    def reflect(self) -> None:
+        for reward in self.current_rewards:
+            self.selected.reward(reward)
+        self.selected.reflect()
+        if len(self.previous_rewards) == 0:
+            self.previous_rewards = self.current_rewards
+        elif sum(self.current_rewards) >= sum(self.previous_rewards):
+            self.previous_rewards = self.current_rewards
+        elif self.is_rotating:
+            self.next_controller()
+        self.current_rewards = []
+
+    def reward(self, reward):
+        for controller in self.controllers:
+            controller.reset()
+        self.current_rewards.append(reward)
+
+
+class Environment_Controller:
     def __init__(self, env: gym.Env):
         self.action_space = env.action_space
 
@@ -124,7 +179,7 @@ class Decider:
         return 0
 
 
-class Logger:
+class Environment_Monitor:
     def __init__(self):
         self.rewards = []
 
@@ -142,14 +197,15 @@ class Logger:
         minimum = self.minimums[n]
         epsilon = self.epsilons[n]
         multiplier = self.multipliers[n]
-        return f'''
+        text = f'''
         Episode {episode}
-        Last {Settings.EPISODE_LEARN} average rewards: {average}
-        Highest reward: {maximum}
-        Lowest reward: {minimum}
-        Epsilon: {epsilon}
-        Multiplier: {multiplier}
+        Last {Settings.EPISODE_LEARN} average rewards: {average:.3f}
+        Highest reward: {maximum:.3f}
+        Lowest reward: {minimum:.3f}
+        Epsilon: {epsilon:.3f}
+        Multiplier: {multiplier:.3f}
         '''
+        return textwrap.dedent(text)
 
     def monitor(self, reward):
         self.rewards.append(reward)
@@ -166,10 +222,10 @@ class Logger:
 
 
 class Environment:
-    def __init__(self, environment: gym.Env, learner: Learning_Controller, decider: Decider):
+    def __init__(self, environment: gym.Env, learner: Learning_Controller, decider: Environment_Controller):
         self.env = environment
         self.decider = decider
-        self.logger = Logger()
+        self.logger = Environment_Monitor()
 
         self.learner = learner
 
@@ -197,11 +253,15 @@ class Environment:
 
             self.rewards += reward
             if done:
-                if episode % Settings.EPISODE_PRINT == 0 or episode % Settings.EPISODE_SHOW == 0:
+                if not Settings.EPISODE_PRINT_TOGGLE:
+                    pass
+                elif episode % Settings.EPISODE_PRINT == 0 or episode % Settings.EPISODE_SHOW == 0:
                     print("Episode {} finished after {} timesteps".format(episode, time_steps + 1))
                 break
         else:
-            if episode % Settings.EPISODE_PRINT == 0 or episode % Settings.EPISODE_SHOW == 0:
+            if not Settings.EPISODE_PRINT_TOGGLE:
+                pass
+            elif episode % Settings.EPISODE_PRINT == 0 or episode % Settings.EPISODE_SHOW == 0:
                 print("Episode {} finished after {} timesteps".format(episode, Settings.TIME_STEPS))
 
     def step_end(self):
@@ -218,7 +278,7 @@ class Environment:
             learner.reflect()
             learner.explore()
 
-        if Settings.MULTIPLIER_EPSILON > 1.0:
+        if Settings.MULTIPLIER_EPSILON > Settings.EPSILON_CAP:
             Settings.MULTIPLIER_EPSILON *= Settings.EPSILON_DECAY
         if Settings.EPSILON > Settings.EPSILON_CAP:
             Settings.EPSILON *= Settings.EPSILON_DECAY
@@ -228,6 +288,6 @@ class Environment:
             log += f'{self.learner.name} = {learner.get_string()}' + '\n'
             print(log)
 
-        if episode > Settings.EPISODES:
+        if episode > Settings.EPISODE_CAP:
             self.stop()
         self.episode += 1
