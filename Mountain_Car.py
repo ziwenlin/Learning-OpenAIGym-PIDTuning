@@ -34,7 +34,7 @@ PID_CART = (0, 0, 0)
 PID_CART = (-1.2978, -0.0252, -0.8364)
 PID_CART = (-1.8086, -0.0327, -0.7587)
 
-cart_agent = Controllers.Learning_PID_Controller(PID_CART)
+cart_agent = Controllers.Learning_PID_Controller(preset=PID_CART)
 agent = cart_agent
 agent.name = 'PID_CART'
 

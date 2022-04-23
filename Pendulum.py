@@ -40,10 +40,10 @@ PID_SIN = (0, 0, 0)
 env = gym.make('Pendulum-v1')
 logger = Controllers.Environment_Monitor()
 
-cos_agent = Controllers.Learning_PID_Controller(PID_COS)
+cos_agent = Controllers.Learning_PID_Controller(preset=PID_COS)
 # agent = cos_agent
 # agent.name = 'PID_COS'
-sin_agent = Controllers.Learning_PID_Controller(PID_SIN)
+sin_agent = Controllers.Learning_PID_Controller(preset=PID_SIN)
 agent = sin_agent
 agent.name = 'PID SIN'
 
