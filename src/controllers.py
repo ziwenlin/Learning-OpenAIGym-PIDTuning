@@ -8,7 +8,26 @@ import numpy as np
 import settings
 
 
-class PIDController:
+class AnyController:
+
+    @abc.abstractmethod
+    def set_control(self, preset):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def get_control(self) -> tuple:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def get_output(self, value, target) -> float:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def reset(self):
+        raise NotImplementedError
+
+
+class PIDController(AnyController):
     def __init__(self, preset):
         self.d_value = 0
         self.i_value = 0
@@ -21,8 +40,8 @@ class PIDController:
     def get_control(self):
         return self.p_control, self.i_control, self.d_control
 
-    def get_output(self, value, setpoint):
-        error = setpoint - value
+    def get_output(self, value, target):
+        error = target - value
 
         p = self.p_control * error
         i = self.i_control * (error + self.i_value)
@@ -37,38 +56,58 @@ class PIDController:
         self.i_value = 0
 
 
+class NodeController(AnyController):
+    def __init__(self, preset):
+        self.control = preset
+
+    def set_control(self, preset):
+        self.control = tuple(preset)
+
+    def get_control(self) -> tuple:
+        return tuple(self.control)
+
+    def get_output(self, observation, offset) -> float:
+        output = offset
+        for weight, value in zip(self.control, observation):
+            output += weight * value
+        return output
+
+    def reset(self):
+        pass
+
+
 class LearningController:
     name = ''
 
     @abc.abstractmethod
     def explore(self) -> None:
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def reflect(self) -> None:
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def reward(self, reward):
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_string(self) -> str:
-        return ''
+        raise NotImplementedError
 
     @abc.abstractmethod
     def reset(self):
-        pass
+        raise NotImplementedError
 
 
-class LearningPIDController(PIDController, LearningController):
+class LearningAnyController(AnyController, LearningController):
     def __init__(self, name='', preset=(0, 0, 0)):
         super().__init__(preset)
         self.name = name
         self.current_rewards = []
-        self.current_control = self.get_control()
+        self.current_control = preset
         self.previous_rewards = []
-        self.previous_control = self.get_control()
+        self.previous_control = preset
 
     def get_string(self):
         return f'{tuple(float("{:.4f}".format(x)) for x in self.get_control())}'
@@ -92,21 +131,6 @@ class LearningPIDController(PIDController, LearningController):
         self.set_control(new_control)
         self.current_control = tuple(new_control)
 
-    def get_improvement(self, current, previous):
-        if current > 0 and previous > 0:
-            pass
-        elif current > previous:
-            current += abs(previous) + 2
-            previous += abs(previous) + 1
-        elif current < previous:
-            previous += abs(current) + 2
-            current += abs(current) + 1
-        elif current == previous:
-            current = 9
-            previous = 10
-        improvement = current / previous
-        return improvement
-
     def reflect(self):
         previous_rewards = self.previous_rewards
         current_rewards = self.current_rewards
@@ -114,19 +138,19 @@ class LearningPIDController(PIDController, LearningController):
         if len(previous_rewards) == 0:
             # When it is the first run
             self.previous_rewards = current_rewards.copy()
-            self.previous_control = tuple(self.get_control())
+            self.previous_control = self.current_control
             has_improved = False
         else:
             current_min = min(current_rewards)
             previous_min = min(previous_rewards)
-            improvement = self.get_improvement(current_min, previous_min)
+            improvement = get_improvement(current_min, previous_min)
             has_improved = improvement > np.random.rand() * settings.EPSILON_DISCOUNT
 
         if has_improved and sum(current_rewards) >= sum(previous_rewards):
             # When the newer control has scored an equal or better score
             # Overwrite the previous reward and control
             self.previous_rewards = current_rewards.copy()
-            self.previous_control = tuple(self.get_control())
+            self.previous_control = self.current_control
         else:
             # Revert the changes
             # Reset current reward and control
@@ -138,6 +162,18 @@ class LearningPIDController(PIDController, LearningController):
     def reward(self, reward):
         self.reset()
         self.current_rewards.append(reward)
+
+
+class LearningPIDController(LearningAnyController, PIDController):
+    def __init__(self, name='', preset=(0, 0, 0)):
+        super().__init__(name, preset)
+
+
+class LearningNodeController(LearningAnyController, NodeController):
+    def __init__(self, name='', preset=None):
+        super().__init__(name, preset)
+        if preset is None:
+            raise ValueError('Please provide a preset')
 
 
 class MultiLearningController(LearningController):
@@ -341,3 +377,19 @@ class Environment:
                 print("Collected rewards:", rewards)
                 break
         self.stop()
+
+
+def get_improvement(current, previous):
+    if current > 0 and previous > 0:
+        pass
+    elif current > previous:
+        current += abs(previous) + 2
+        previous += abs(previous) + 1
+    elif current < previous:
+        previous += abs(current) + 2
+        current += abs(current) + 1
+    elif current == previous:
+        current = 9
+        previous = 10
+    improvement = current / previous
+    return improvement
