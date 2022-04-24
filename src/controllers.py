@@ -92,6 +92,21 @@ class LearningPIDController(PIDController, LearningController):
         self.set_control(new_control)
         self.current_control = tuple(new_control)
 
+    def get_improvement(self, current, previous):
+        if current > 0 and previous > 0:
+            pass
+        elif current > previous:
+            current += abs(previous) + 2
+            previous += abs(previous) + 1
+        elif current < previous:
+            previous += abs(current) + 2
+            current += abs(current) + 1
+        elif current == previous:
+            current = 9
+            previous = 10
+        improvement = current / previous
+        return improvement
+
     def reflect(self):
         previous_rewards = self.previous_rewards
         current_rewards = self.current_rewards
@@ -104,23 +119,7 @@ class LearningPIDController(PIDController, LearningController):
         else:
             current_min = min(current_rewards)
             previous_min = min(previous_rewards)
-            improvement = 0
-            if current_min > 0 and previous_min > 0:
-                improvement = current_min / previous_min
-            elif current_min > 0 and previous_min < 0:
-                improvement = 1
-            elif current_min < 0 and previous_min > 0:
-                difference = previous_min - current_min
-                if difference > 1:
-                    improvement = 1 / difference
-                else:
-                    improvement = 1
-            elif current_min < 0 and previous_min < 0:
-                difference = current_min - previous_min
-                if difference > -1:
-                    improvement = 1
-                else:
-                    improvement = -1 / difference
+            improvement = self.get_improvement(current_min, previous_min)
             has_improved = improvement > np.random.rand() * settings.EPSILON_DISCOUNT
 
         if has_improved and sum(current_rewards) >= sum(previous_rewards):

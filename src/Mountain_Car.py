@@ -1,5 +1,4 @@
 import gym
-import settings
 import controllers
 
 
