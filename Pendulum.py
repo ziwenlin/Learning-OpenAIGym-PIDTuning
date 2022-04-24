@@ -1,9 +1,9 @@
 import gym
-import Settings
-import Controllers
+import settings
+import controllers
 
 
-class Pendulum(Controllers.Environment_Controller):
+class Pendulum(controllers.EnvironmentController):
     def get_reward(self, observation: gym.core.ObsType) -> float:
         # reward -= abs(observation[0] - 0.50)
         # reward += abs(observation[1] * 100)
@@ -26,9 +26,9 @@ def action_space(output):
         action = output
     return [action]
 
-Settings.EPISODE_MULTIPLIER = 1
-Settings.recalculate()
-Settings.EPISODE_PRINT = Settings.EPISODE_CAP
+settings.EPISODE_MULTIPLIER = 1
+settings.recalculate()
+settings.EPISODE_PRINT = settings.EPISODE_CAP
 
 PID_COS = (0, 0, 0)
 PID_COS = (-1.2978, -0.0252, -0.8364)
@@ -38,16 +38,16 @@ PID_COS = (-1.8086, 0.4038, -0.7587)
 PID_SIN = (0, 0, 0)
 
 env = gym.make('Pendulum-v1')
-logger = Controllers.Environment_Monitor()
+logger = controllers.EnvironmentMonitor()
 
-cos_agent = Controllers.Learning_PID_Controller(preset=PID_COS)
+cos_agent = controllers.LearningPIDController(preset=PID_COS)
 # agent = cos_agent
 # agent.name = 'PID_COS'
-sin_agent = Controllers.Learning_PID_Controller(preset=PID_SIN)
+sin_agent = controllers.LearningPIDController(preset=PID_SIN)
 agent = sin_agent
 agent.name = 'PID SIN'
 
-environment = Controllers.Environment(env, agent, Pendulum(env))
+environment = controllers.Environment(env, agent, Pendulum(env))
 
 environment.start()
 while environment.running:

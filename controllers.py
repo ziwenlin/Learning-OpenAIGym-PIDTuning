@@ -5,13 +5,13 @@ from typing import List
 import gym
 import numpy as np
 
-import Settings
+import settings
 
 
-class PID_Controller:
+class PIDController:
     def __init__(self, preset):
-        self.derivative = 0
-        self.integral = 0
+        self.d_value = 0
+        self.i_value = 0
 
         self.p_control, self.i_control, self.d_control = preset
 
@@ -23,21 +23,21 @@ class PID_Controller:
 
     def get_output(self, value, setpoint):
         error = setpoint - value
-        self.integral += error
 
         p = self.p_control * error
-        i = self.i_control * (error - self.integral)
-        d = self.d_control * (error - self.derivative)
+        i = self.i_control * (error + self.i_value)
+        d = self.d_control * (error - self.d_value)
 
-        self.derivative = error  # Used as previous error
+        self.i_value += error
+        self.d_value = error  # Used as previous error
         return p + i + d
 
     def reset(self):
-        self.derivative = 0
-        self.integral = 0
+        self.d_value = 0
+        self.i_value = 0
 
 
-class Learning_Controller:
+class LearningController:
     name = ''
 
     @abc.abstractmethod
@@ -61,7 +61,7 @@ class Learning_Controller:
         pass
 
 
-class Learning_PID_Controller(PID_Controller, Learning_Controller):
+class LearningPIDController(PIDController, LearningController):
     def __init__(self, name='', preset=(0, 0, 0)):
         super().__init__(preset)
         self.name = name
@@ -79,15 +79,15 @@ class Learning_PID_Controller(PID_Controller, Learning_Controller):
 
         # Todo make explore progress comparison than to do it randomly
         for i in range(len(new_control)):
-            improve = Settings.MULTIPLIER_IMPROVE * Settings.MULTIPLIER_EPSILON
+            improve = settings.MULTIPLIER_IMPROVE * settings.MULTIPLIER_EPSILON
             if previous_control[i] != new_control[i]:
-                if np.random.rand() > Settings.EPSILON:
+                if np.random.rand() > settings.EPSILON:
                     new_control[i] += (new_control[i] - previous_control[i]) * improve
                     break
         else:
             # Random explore settings
             i = np.random.randint(len(new_control))
-            new_control[i] += (np.random.rand() - 0.5) * Settings.MULTIPLIER_RAND * Settings.MULTIPLIER_EPSILON
+            new_control[i] += (np.random.rand() - 0.5) * settings.MULTIPLIER_RAND * settings.MULTIPLIER_EPSILON
 
         self.set_control(new_control)
         self.current_control = tuple(new_control)
@@ -121,7 +121,7 @@ class Learning_PID_Controller(PID_Controller, Learning_Controller):
                     improvement = 1
                 else:
                     improvement = -1 / difference
-            has_improved = improvement > np.random.rand() * Settings.EPSILON_DISCOUNT
+            has_improved = improvement > np.random.rand() * settings.EPSILON_DISCOUNT
 
         if has_improved and sum(current_rewards) >= sum(previous_rewards):
             # When the newer control has scored an equal or better score
@@ -141,17 +141,17 @@ class Learning_PID_Controller(PID_Controller, Learning_Controller):
         self.current_rewards.append(reward)
 
 
-class Multi_Learning_Controller(Learning_Controller):
+class MultiLearningController(LearningController):
     def __init__(self):
-        self.controllers: List[Learning_Controller] = []
-        self.selected: Learning_Controller = Learning_Controller()
+        self.controllers: List[LearningController] = []
+        self.selected: LearningController = LearningController()
         self.is_rotating = True
         self.index = 0
         self.count = 0
         self.previous_rewards = []
         self.current_rewards = []
 
-    def add_controller(self, controller: Learning_Controller):
+    def add_controller(self, controller: LearningController):
         self.controllers.append(controller)
         if not len(self.controllers) > 1:
             self.select_controller(0)
@@ -199,7 +199,7 @@ class Multi_Learning_Controller(Learning_Controller):
         self.current_rewards.append(reward)
 
 
-class Environment_Controller:
+class EnvironmentController:
     def __init__(self, env: gym.Env):
         self.action_space = env.action_space
 
@@ -216,7 +216,7 @@ class Environment_Controller:
         return 0
 
 
-class Environment_Monitor:
+class EnvironmentMonitor:
     def __init__(self):
         self.rewards = []
 
@@ -236,7 +236,7 @@ class Environment_Monitor:
         multiplier = self.multipliers[n]
         text = f'''
         Episode {episode}
-        Last {Settings.EPISODE_LEARN} average rewards: {average:.3f}
+        Last {settings.EPISODE_LEARN} average rewards: {average:.3f}
         Highest reward: {maximum:.3f}
         Lowest reward: {minimum:.3f}
         Epsilon: {epsilon:.3f}
@@ -248,8 +248,8 @@ class Environment_Monitor:
         self.rewards.append(reward)
 
     def process(self, episode):
-        self.epsilons.append(Settings.EPSILON)
-        self.multipliers.append(Settings.MULTIPLIER_EPSILON)
+        self.epsilons.append(settings.EPSILON)
+        self.multipliers.append(settings.MULTIPLIER_EPSILON)
         self.episodes.append(episode)
         rewards = self.rewards
         self.averages.append(sum(rewards) / len(rewards))
@@ -259,10 +259,10 @@ class Environment_Monitor:
 
 
 class Environment:
-    def __init__(self, environment: gym.Env, learner: Learning_Controller, controller: Environment_Controller):
+    def __init__(self, environment: gym.Env, learner: LearningController, controller: EnvironmentController):
         self.env = environment
         self.controller = controller
-        self.logger = Environment_Monitor()
+        self.logger = EnvironmentMonitor()
 
         self.learner = learner
 
@@ -281,12 +281,12 @@ class Environment:
 
     def step_episode(self):
         episode = self.episode
-        if episode % Settings.EPISODE_RENDER == 0:
+        if episode % settings.EPISODE_RENDER == 0:
             self.env.render()
         observation = self.env.reset()
         self.controller.reset()
-        for time_steps in range(Settings.TIME_STEPS):
-            if episode % Settings.EPISODE_SHOW == 0:
+        for time_steps in range(settings.TIME_STEPS):
+            if episode % settings.EPISODE_SHOW == 0:
                 self.env.render()
 
             action = self.controller.get_action(observation)
@@ -294,10 +294,10 @@ class Environment:
             reward += self.controller.get_reward(observation)
 
             self.rewards += reward
-            if done or time_steps + 1 == Settings.TIME_STEPS:
-                if not Settings.EPISODE_PRINT_TOGGLE:
+            if done or time_steps + 1 == settings.TIME_STEPS:
+                if not settings.EPISODE_PRINT_TOGGLE:
                     pass
-                elif episode % Settings.EPISODE_PRINT == 0 or episode % Settings.EPISODE_SHOW == 0:
+                elif episode % settings.EPISODE_PRINT == 0 or episode % settings.EPISODE_SHOW == 0:
                     print("Episode {} finished after {} timesteps".format(episode, time_steps + 1))
                 break
 
@@ -310,29 +310,29 @@ class Environment:
         logger.monitor(self.rewards)
         self.rewards = 0
 
-        if episode % Settings.EPISODE_LEARN == 0:
+        if episode % settings.EPISODE_LEARN == 0:
             logger.process(episode)
             learner.reflect()
             learner.explore()
 
-        if Settings.MULTIPLIER_EPSILON > Settings.EPSILON_CAP:
-            Settings.MULTIPLIER_EPSILON *= Settings.EPSILON_DECAY_RATE
-        if Settings.EPSILON > Settings.EPSILON_CAP:
-            Settings.EPSILON *= Settings.EPSILON_DECAY_RATE
+        if settings.MULTIPLIER_EPSILON > settings.EPSILON_CAP:
+            settings.MULTIPLIER_EPSILON *= settings.EPSILON_DECAY_RATE
+        if settings.EPSILON > settings.EPSILON_CAP:
+            settings.EPSILON *= settings.EPSILON_DECAY_RATE
 
-        if episode % Settings.EPISODE_SHOW == 0:
+        if episode % settings.EPISODE_SHOW == 0:
             log = logger.get_log()
             log += f'{self.learner.name} = {learner.get_string()}' + '\n'
             print(log)
 
-        if episode > Settings.EPISODE_CAP:
+        if episode > settings.EPISODE_CAP:
             self.stop()
         self.episode += 1
 
     def run_once(self):
         observation = self.env.reset()
         rewards = 0
-        for time_steps in range(Settings.TIME_STEPS * 2):
+        for time_steps in range(settings.TIME_STEPS * 2):
             self.env.render()
             action = self.controller.get_action(observation)
             observation, reward, done, info = self.env.step(action)

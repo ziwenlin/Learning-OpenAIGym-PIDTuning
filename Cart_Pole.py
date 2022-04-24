@@ -1,17 +1,17 @@
 import gym
 import numpy.random
 
-import Settings
-import Controllers
+import settings
+import controllers
 
 
-class CartPole(Controllers.Environment_Controller):
+class CartPole(controllers.EnvironmentController):
     position = 0.0
     episode = 0
 
     def reset(self):
         self.episode += 1
-        progress = self.episode / Settings.EPISODE_CAP
+        progress = self.episode / settings.EPISODE_CAP
         self.position = numpy.random.uniform(-2, 2) * progress
 
     def get_action(self, observation: gym.core.ObsType) -> gym.core.ActType:
@@ -40,8 +40,8 @@ def action_space(output):
     return action
 
 
-Settings.EPISODE_CAP *= 10
-Settings.TIME_STEPS = 500
+settings.EPISODE_CAP *= 10
+settings.TIME_STEPS = 500
 
 PID_CART = (-0.5298, 0.4768, -0.488)
 PID_CART = (-0.2419, 1.0445, -0.393)
@@ -65,24 +65,30 @@ PID_POINT = (-0.3501, -0.0706, 0.2518)
 PID_POINT = (-0.179, -0.0706, 0.3005)
 PID_POINT = (0, 0, 0)
 
-pole_agent = Controllers.Learning_PID_Controller('PID_POLE', PID_POLE)
-cart_agent = Controllers.Learning_PID_Controller('PID_CART', PID_CART)
-point_agent = Controllers.Learning_PID_Controller('PID_POINT', PID_POINT)
-learning_agent = Controllers.Multi_Learning_Controller()
+pole_agent = controllers.LearningPIDController('PID_POLE', PID_POLE)
+cart_agent = controllers.LearningPIDController('PID_CART', PID_CART)
+point_agent = controllers.LearningPIDController('PID_POINT', PID_POINT)
+learning_agent = controllers.MultiLearningController()
 learning_agent.add_controller(cart_agent)
 learning_agent.add_controller(pole_agent)
 learning_agent.add_controller(point_agent)
 learning_agent.is_rotating = True
 
-env = gym.make('CartPole-v1')
-environment = Controllers.Environment(env, learning_agent, CartPole(env))
-# environment.controller.episode = environment.episode = Settings.EPISODE_CAP // 10 * 7
 
-environment.start()
-while environment.running:
-    try:
-        environment.step_episode()
-        environment.step_end()
-    except KeyboardInterrupt:
-        break
-environment.stop()
+def main():
+    env = gym.make('CartPole-v1')
+    environment = controllers.Environment(env, learning_agent, CartPole(env))
+    # environment.controller.episode = environment.episode = Settings.EPISODE_CAP // 10 * 7
+
+    environment.start()
+    while environment.running:
+        try:
+            environment.step_episode()
+            environment.step_end()
+        except KeyboardInterrupt:
+            break
+    environment.stop()
+
+
+if __name__ == '__main__':
+    main()
