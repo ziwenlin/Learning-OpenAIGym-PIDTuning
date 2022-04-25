@@ -8,7 +8,8 @@ import numpy as np
 import settings
 
 
-class AnyController:
+class InOutController:
+    output = 0
 
     @abc.abstractmethod
     def set_control(self, preset):
@@ -25,55 +26,6 @@ class AnyController:
     @abc.abstractmethod
     def reset(self):
         raise NotImplementedError
-
-
-class PIDController(AnyController):
-    def __init__(self, preset):
-        self.d_value = 0
-        self.i_value = 0
-
-        self.p_control, self.i_control, self.d_control = preset
-
-    def set_control(self, preset):
-        self.p_control, self.i_control, self.d_control = preset
-
-    def get_control(self):
-        return self.p_control, self.i_control, self.d_control
-
-    def get_output(self, value, target):
-        error = target - value
-
-        p = self.p_control * error
-        i = self.i_control * (error + self.i_value)
-        d = self.d_control * (error - self.d_value)
-
-        self.i_value += error
-        self.d_value = error  # Used as previous error
-        return p + i + d
-
-    def reset(self):
-        self.d_value = 0
-        self.i_value = 0
-
-
-class NodeController(AnyController):
-    def __init__(self, preset):
-        self.control = preset
-
-    def set_control(self, preset):
-        self.control = tuple(preset)
-
-    def get_control(self) -> tuple:
-        return tuple(self.control)
-
-    def get_output(self, observation, offset) -> float:
-        output = offset
-        for weight, value in zip(self.control, observation):
-            output += weight * value
-        return output
-
-    def reset(self):
-        pass
 
 
 class LearningController:
@@ -100,7 +52,74 @@ class LearningController:
         raise NotImplementedError
 
 
-class LearningAnyController(AnyController, LearningController):
+class EnvironmentController:
+    def __init__(self, env: gym.Env):
+        self.action_space = env.action_space
+
+    @abc.abstractmethod
+    def reset(self):
+        pass
+
+    @abc.abstractmethod
+    def get_action(self, observation: gym.core.ObsType) -> gym.core.ActType:
+        return self.action_space.sample()
+
+    @abc.abstractmethod
+    def get_reward(self, observation: gym.core.ObsType) -> float:
+        return 0
+
+
+class PIDController(InOutController):
+    def __init__(self, preset):
+        self.d_value = 0
+        self.i_value = 0
+
+        self.p_control, self.i_control, self.d_control = preset
+
+    def set_control(self, preset):
+        self.p_control, self.i_control, self.d_control = preset
+
+    def get_control(self):
+        return self.p_control, self.i_control, self.d_control
+
+    def get_output(self, value, target):
+        error = target - value
+
+        p = self.p_control * error
+        i = self.i_control * (error + self.i_value)
+        d = self.d_control * (error - self.d_value)
+
+        self.i_value += error
+        self.d_value = error  # Used as previous error
+        return p + i + d
+
+    def reset(self):
+        self.output = 0
+        self.d_value = 0
+        self.i_value = 0
+
+
+class NodeController(InOutController):
+    def __init__(self, preset):
+        self.control = preset
+
+    def set_control(self, preset):
+        self.control = tuple(preset)
+
+    def get_control(self) -> tuple:
+        return tuple(self.control)
+
+    def get_output(self, observation, offset) -> float:
+        output = offset
+        for weight, value in zip(self.control, observation):
+            output += weight * value
+        return output
+
+    def reset(self):
+        self.output = 0
+
+
+class LearningInOutController(InOutController, LearningController):
     def __init__(self, name='', preset=(0, 0, 0)):
         super().__init__(preset)
         self.name = name
@@ -126,7 +145,10 @@ class LearningAnyController(AnyController, LearningController):
         else:
             # Random explore settings
             i = np.random.randint(len(new_control))
-            new_control[i] += (np.random.rand() - 0.5) * settings.MULTIPLIER_RAND * settings.MULTIPLIER_EPSILON
+            new_control[i] += (
+                    (np.random.rand() - 0.5) *
+                    settings.MULTIPLIER_RAND * settings.MULTIPLIER_EPSILON
+            )
 
         self.set_control(new_control)
         self.current_control = tuple(new_control)
@@ -137,7 +159,7 @@ class LearningAnyController(AnyController, LearningController):
 
         if len(previous_rewards) == 0:
             # When it is the first run
-            self.previous_rewards = current_rewards.copy()
+            self.previous_rewards = current_rewards
             self.previous_control = self.current_control
             has_improved = False
         else:
@@ -149,7 +171,7 @@ class LearningAnyController(AnyController, LearningController):
         if has_improved and sum(current_rewards) >= sum(previous_rewards):
             # When the newer control has scored an equal or better score
             # Overwrite the previous reward and control
-            self.previous_rewards = current_rewards.copy()
+            self.previous_rewards = current_rewards
             self.previous_control = self.current_control
         else:
             # Revert the changes
@@ -157,26 +179,26 @@ class LearningAnyController(AnyController, LearningController):
             self.current_control = self.previous_control
 
         self.set_control(self.current_control)
-        self.current_rewards.clear()
+        self.current_rewards = []
 
     def reward(self, reward):
         self.reset()
         self.current_rewards.append(reward)
 
 
-class LearningPIDController(LearningAnyController, PIDController):
+class LearningPIDController(LearningInOutController, PIDController):
     def __init__(self, name='', preset=(0, 0, 0)):
         super().__init__(name, preset)
 
 
-class LearningNodeController(LearningAnyController, NodeController):
+class LearningNodeController(LearningInOutController, NodeController):
     def __init__(self, name='', preset=None):
         super().__init__(name, preset)
         if preset is None:
             raise ValueError('Please provide a preset')
 
 
-class MultiLearningController(LearningController):
+class LearningMultiController(LearningController):
     def __init__(self):
         self.controllers: List[LearningController] = []
         self.selected: LearningController = LearningController()
@@ -234,22 +256,9 @@ class MultiLearningController(LearningController):
         self.current_rewards.append(reward)
 
 
-class EnvironmentController:
-    def __init__(self, env: gym.Env):
-        self.action_space = env.action_space
-
-    @abc.abstractmethod
-    def reset(self):
-        pass
-
-    @abc.abstractmethod
-    def get_action(self, observation: gym.core.ObsType) -> gym.core.ActType:
-        return self.action_space.sample()
-
-    @abc.abstractmethod
-    def get_reward(self, observation: gym.core.ObsType) -> float:
-        return 0
-
+# class GeneticEvolutionController(LearningController):
+#     def __init__(self):
+#
 
 class EnvironmentMonitor:
     def __init__(self):
@@ -294,7 +303,10 @@ class EnvironmentMonitor:
 
 
 class Environment:
-    def __init__(self, environment: gym.Env, learner: LearningController, controller: EnvironmentController):
+    def __init__(self,
+                 environment: gym.Env,
+                 learner: LearningController,
+                 controller: EnvironmentController):
         self.env = environment
         self.controller = controller
         self.logger = EnvironmentMonitor()
@@ -332,23 +344,23 @@ class Environment:
             if done or time_steps + 1 == settings.TIME_STEPS:
                 if not settings.EPISODE_PRINT_TOGGLE:
                     pass
-                elif episode % settings.EPISODE_PRINT == 0 or episode % settings.EPISODE_SHOW == 0:
-                    print("Episode {} finished after {} timesteps".format(episode, time_steps + 1))
+                elif episode % settings.EPISODE_PRINT == 0 or \
+                        episode % settings.EPISODE_SHOW == 0:
+                    print("Episode {} finished after {} timesteps"
+                          .format(episode, time_steps + 1))
                 break
 
     def step_end(self):
-        logger = self.logger
-        learner = self.learner
         episode = self.episode
 
-        learner.reward(self.rewards)
-        logger.monitor(self.rewards)
+        self.learner.reward(self.rewards)
+        self.logger.monitor(self.rewards)
         self.rewards = 0
 
         if episode % settings.EPISODE_LEARN == 0:
-            logger.process(episode)
-            learner.reflect()
-            learner.explore()
+            self.logger.process(episode)
+            self.learner.reflect()
+            self.learner.explore()
 
         if settings.MULTIPLIER_EPSILON > settings.EPSILON_CAP:
             settings.MULTIPLIER_EPSILON *= settings.EPSILON_DECAY_RATE
@@ -356,8 +368,8 @@ class Environment:
             settings.EPSILON *= settings.EPSILON_DECAY_RATE
 
         if episode % settings.EPISODE_SHOW == 0:
-            log = logger.get_log()
-            log += f'{self.learner.name} = {learner.get_string()}' + '\n'
+            log = self.logger.get_log()
+            log += f'{self.learner.name} = {self.learner.get_string()}' + '\n'
             print(log)
 
         if episode > settings.EPISODE_CAP:
@@ -373,7 +385,8 @@ class Environment:
             observation, reward, done, info = self.env.step(action)
             rewards += reward
             if done:
-                print("Episode {} finished after {} timesteps".format(1, time_steps + 1))
+                print("Episode {} finished after {} timesteps"
+                      .format(1, time_steps + 1))
                 print("Collected rewards:", rewards)
                 break
         self.stop()
