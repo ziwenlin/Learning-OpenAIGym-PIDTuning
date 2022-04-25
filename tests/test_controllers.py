@@ -19,6 +19,87 @@ class InOutController:
             self.assertEqual(0, self.controller.output)
 
 
+class LearningController:
+    class BaseTest(TestCase):
+        def setUp(self) -> None:
+            self.controller = controllers.LearningController()
+
+        def test_reward_being_added_to_current_reward(self):
+            for i in [1, 4, 6, 7, 3]:  # 21
+                self.controller.reward(i)
+            rewards = self.controller.current_rewards
+            self.assertEqual([1, 4, 6, 7, 3], rewards)
+            rewards = self.controller.previous_rewards
+            self.assertEqual([], rewards)
+
+        def test_reflect_processsed_current_and_previous_rewards(self):
+            for i in [1, 4, 6, 7, 3]:  # 21
+                self.controller.reward(i)
+            self.controller.reflect()
+            rewards = self.controller.current_rewards
+            self.assertEqual([], rewards)
+            rewards = self.controller.previous_rewards
+            self.assertEqual([1, 4, 6, 7, 3], rewards)
+
+        def test_reward_being_added_to_current_reward_after_reflect(self):
+            for i in [1, 4, 6, 7, 3]:  # 21
+                self.controller.reward(i)
+            self.controller.reflect()
+            for i in [5, 7, 9, 3, 1]:  # 25
+                self.controller.reward(i)
+            rewards = self.controller.current_rewards
+            self.assertEqual([5, 7, 9, 3, 1], rewards)
+            rewards = self.controller.previous_rewards
+            self.assertEqual([1, 4, 6, 7, 3], rewards)
+
+        def test_reflect_lower_reward_at_second_reflect(self):
+            for i in [5, 7, 9, 3, 1]:  # 25
+                self.controller.reward(i)
+            self.controller.reflect()
+            for i in [1, 4, 6, 7, 3]:  # 21
+                self.controller.reward(i)
+            self.controller.reflect()
+
+            rewards = self.controller.current_rewards
+            self.assertEqual([], rewards)
+            rewards = self.controller.previous_rewards
+            self.assertEqual([5, 7, 9, 3, 1], rewards)
+
+        def test_reflect_higher_reward_at_second_reflect(self):
+            for i in [1, 4, 6, 7, 3]:  # 21
+                self.controller.reward(i)
+            self.controller.reflect()
+            for i in [5, 7, 9, 3, 1]:  # 25
+                self.controller.reward(i)
+            self.controller.reflect()
+
+            rewards = self.controller.current_rewards
+            self.assertEqual([], rewards)
+            rewards = self.controller.previous_rewards
+            self.assertEqual([5, 7, 9, 3, 1], rewards)
+
+
+# class TestInOutController(TestCase):
+#     def setUp(self) -> None:
+#         self.controller = controllers.InOutController()
+#
+#     def test_set_control(self):
+#         with self.assertRaises(NotImplementedError):
+#             self.controller.set_control(object)
+#
+#     def test_get_control(self):
+#         with self.assertRaises(NotImplementedError):
+#             self.controller.get_control()
+#
+#     def test_get_output(self):
+#         with self.assertRaises(NotImplementedError):
+#             self.controller.get_output(object, object)
+#
+#     def test_reset(self):
+#         with self.assertRaises(NotImplementedError):
+#             self.controller.reset()
+
+
 class TestPIDController(InOutController.BaseTest):
     def setUp(self) -> None:
         self.controller = controllers.PIDController(PID)
@@ -93,67 +174,7 @@ class TestNodeController(InOutController.BaseTest):
         self.assertEqual(0 + 1 + -4 + 0, output)
 
 
-class LearningInOutController:
-    class BaseTest(TestCase):
-        def setUp(self) -> None:
-            self.controller = controllers.LearningInOutController()
-
-        def test_reward_being_added_to_current_reward(self):
-            for i in [1, 4, 6, 7, 3]:  # 21
-                self.controller.reward(i)
-            rewards = self.controller.current_rewards
-            self.assertEqual([1, 4, 6, 7, 3], rewards)
-            rewards = self.controller.previous_rewards
-            self.assertEqual([], rewards)
-
-        def test_reflect_processsed_current_and_previous_rewards(self):
-            for i in [1, 4, 6, 7, 3]:  # 21
-                self.controller.reward(i)
-            self.controller.reflect()
-            rewards = self.controller.current_rewards
-            self.assertEqual([], rewards)
-            rewards = self.controller.previous_rewards
-            self.assertEqual([1, 4, 6, 7, 3], rewards)
-
-        def test_reward_being_added_to_current_reward_after_reflect(self):
-            for i in [1, 4, 6, 7, 3]:  # 21
-                self.controller.reward(i)
-            self.controller.reflect()
-            for i in [5, 7, 9, 3, 1]:  # 25
-                self.controller.reward(i)
-            rewards = self.controller.current_rewards
-            self.assertEqual([5, 7, 9, 3, 1], rewards)
-            rewards = self.controller.previous_rewards
-            self.assertEqual([1, 4, 6, 7, 3], rewards)
-
-        def test_reflect_lower_reward_at_second_reflect(self):
-            for i in [5, 7, 9, 3, 1]:  # 25
-                self.controller.reward(i)
-            self.controller.reflect()
-            for i in [1, 4, 6, 7, 3]:  # 21
-                self.controller.reward(i)
-            self.controller.reflect()
-
-            rewards = self.controller.current_rewards
-            self.assertEqual([], rewards)
-            rewards = self.controller.previous_rewards
-            self.assertEqual([5, 7, 9, 3, 1], rewards)
-
-        def test_reflect_higher_reward_at_second_reflect(self):
-            for i in [1, 4, 6, 7, 3]:  # 21
-                self.controller.reward(i)
-            self.controller.reflect()
-            for i in [5, 7, 9, 3, 1]:  # 25
-                self.controller.reward(i)
-            self.controller.reflect()
-
-            rewards = self.controller.current_rewards
-            self.assertEqual([], rewards)
-            rewards = self.controller.previous_rewards
-            self.assertEqual([5, 7, 9, 3, 1], rewards)
-
-
-class TestLearningInOutController(LearningInOutController.BaseTest):
+class TestLearningInOutController(LearningController.BaseTest):
     def setUp(self) -> None:
         # Using PID because the following tests need an implemented controller
         self.controller = controllers.LearningPIDController()
@@ -191,7 +212,7 @@ class TestLearningInOutController(LearningInOutController.BaseTest):
         self.assertEqual((1, 2, 3), self.controller.previous_control)
 
 
-class TestLearningNodeController(LearningInOutController.BaseTest):
+class TestLearningNodeController(LearningController.BaseTest):
     def setUp(self) -> None:
         self.controller = controllers.LearningNodeController(NAME, NODE)
 
@@ -204,7 +225,7 @@ class TestLearningNodeController(LearningInOutController.BaseTest):
         self.assertEqual('(0.5, 0.1, 2.0, 0.0)', text)
 
 
-class TestLearningPIDController(LearningInOutController.BaseTest):
+class TestLearningPIDController(LearningController.BaseTest):
     def setUp(self) -> None:
         self.controller = controllers.LearningPIDController(NAME, PID)
 

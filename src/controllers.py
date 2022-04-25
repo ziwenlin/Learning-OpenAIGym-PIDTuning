@@ -29,6 +29,8 @@ class InOutController:
 
 
 class LearningController:
+    previous_rewards = []
+    current_rewards = []
     name = ''
 
     @abc.abstractmethod
@@ -205,8 +207,6 @@ class LearningMultiController(LearningController):
         self.is_rotating = True
         self.index = 0
         self.count = 0
-        self.previous_rewards = []
-        self.current_rewards = []
 
     def add_controller(self, controller: LearningController):
         self.controllers.append(controller)
