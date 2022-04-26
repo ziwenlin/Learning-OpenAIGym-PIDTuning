@@ -8,8 +8,8 @@ class MountainCar(controllers.EnvironmentController):
 
     def get_action(self, observation: gym.core.ObsType) -> gym.core.ActType:
         output = 0
-        position = point_agent.get_output(observation[0] + observation[1], self.position)
-        output += cart_agent.get_output(observation[0] + observation[1], position)
+        position = pid_point.get_output(observation[0] + observation[1], self.position)
+        output += pid_cart.get_output(observation[0] + observation[1], position)
         # if observation[1] < 0:
         #     output = cart_agent.get_output(observation[0], 0.6)
         # elif observation[1] > 0:
@@ -19,9 +19,9 @@ class MountainCar(controllers.EnvironmentController):
 
     def get_reward(self, observation: gym.core.ObsType) -> float:
         reward = 0
-        if learning_agent.name in ('PID_CART', 'NODE_CART'):
+        if learner.name in ('PID_CART', 'NODE_CART'):
             reward += abs(observation[1]) ** 0.5
-        elif learning_agent.name in ('PID_POINT', 'NODE_POINT'):
+        elif learner.name in ('PID_POINT', 'NODE_POINT'):
             reward += abs(observation[1]) ** 0.5
         # reward -= abs(observation[0] - 0.50)
         # reward += abs(observation[1] * 100)
@@ -49,20 +49,20 @@ PID_POINT = (0, 0, 0)
 NODE_CART = (0, 0)
 NODE_POINT = (0, 0)
 
-cart_agent = controllers.LearningPIDController('PID_CART', PID_CART)
-point_agent = controllers.LearningPIDController('PID_POINT', PID_POINT)
-cart_node = controllers.LearningNodeController('NODE_CART', NODE_CART)
-point_node = controllers.LearningNodeController('NODE_POINT', NODE_POINT)
-learning_agent = controllers.LearningMultiController()
-learning_agent.add_controller(cart_agent)
-learning_agent.add_controller(point_agent)
-learning_agent.add_controller(cart_node)
-learning_agent.add_controller(point_node)
+pid_cart = controllers.LearningPIDController('PID_CART', PID_CART)
+pid_point = controllers.LearningPIDController('PID_POINT', PID_POINT)
+node_cart = controllers.LearningNodeController('NODE_CART', NODE_CART)
+node_point = controllers.LearningNodeController('NODE_POINT', NODE_POINT)
+learner = controllers.RotatingLearningController()
+learner.add_controller(pid_cart)
+learner.add_controller(pid_point)
+learner.add_controller(node_cart)
+learner.add_controller(node_point)
 
 
 def main():
     env = gym.make('MountainCar-v0')
-    environment = controllers.Environment(env, learning_agent, MountainCar(env))
+    environment = controllers.EnvironmentRunner(env, learner, MountainCar(env))
 
     environment.start()
     while environment.running:

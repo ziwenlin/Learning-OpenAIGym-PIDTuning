@@ -233,7 +233,7 @@ class RotatingController():
         self.select_controller(self.index + 1)
 
 
-class LearningMultiController(LearningController, RotatingController):
+class RotatingLearningController(LearningController, RotatingController):
     def __init__(self):
         LearningController.__init__(self)
         RotatingController.__init__(self)
@@ -336,7 +336,7 @@ class EnvironmentMonitor:
         self.rewards.clear()
 
 
-class Environment:
+class EnvironmentRunner:
     def __init__(self,
                  environment: gym.Env,
                  learner: LearningController,

@@ -16,18 +16,18 @@ class CartPole(controllers.EnvironmentController):
 
     def get_action(self, observation: gym.core.ObsType) -> gym.core.ActType:
         output = 0
-        position = point_agent.get_output(point_node.get_output(observation, 0), self.position)
-        output += pole_agent.get_output(pole_node.get_output(observation, 0), 0.0)
-        output += cart_agent.get_output(cart_node.get_output(observation, 0), position)
+        position = pid_point.get_output((node_point.get_output(observation, 0),), self.position)
+        output += pid_pole.get_output((node_pole.get_output(observation, 0),), 0.0)
+        output += pid_cart.get_output((node_cart.get_output(observation, 0),), position)
         return action_space(output)
 
     def get_reward(self, observation: gym.core.ObsType) -> float:
         reward = 0
-        if learning_agent.name in ('PID_POLE', 'NODE_POLE'):
+        if learner.name in ('PID_POLE', 'NODE_POLE'):
             reward -= abs(observation[2] * 0.80) ** 0.5
-        elif learning_agent.name in ('PID_CART', 'NODE_CART'):
+        elif learner.name in ('PID_CART', 'NODE_CART'):
             reward -= abs(observation[0] - self.position) ** 0.5
-        elif learning_agent.name in ('PID_POINT', 'NODE_POINT'):
+        elif learner.name in ('PID_POINT', 'NODE_POINT'):
             reward -= abs(observation[0] - self.position) ** 0.5
         return reward
 
@@ -70,25 +70,24 @@ NODE_CART = (0, 0, 0, 0)
 NODE_POINT = (0, 0, 0, 0)
 
 
-pole_agent = controllers.LearningPIDController('PID_POLE', PID_POLE)
-cart_agent = controllers.LearningPIDController('PID_CART', PID_CART)
-point_agent = controllers.LearningPIDController('PID_POINT', PID_POINT)
-pole_node = controllers.LearningNodeController('NODE_POLE', NODE_POLE)
-cart_node = controllers.LearningNodeController('NODE_POLE', NODE_CART)
-point_node = controllers.LearningNodeController('NODE_POINT', NODE_POINT)
-learning_agent = controllers.LearningMultiController()
-learning_agent.add_controller(cart_agent)
-learning_agent.add_controller(pole_agent)
-learning_agent.add_controller(point_agent)
-learning_agent.add_controller(pole_node)
-learning_agent.add_controller(cart_node)
-learning_agent.add_controller(point_node)
-learning_agent.is_rotating = True
+pid_pole = controllers.LearningPIDController('PID_POLE', PID_POLE)
+pid_cart = controllers.LearningPIDController('PID_CART', PID_CART)
+pid_point = controllers.LearningPIDController('PID_POINT', PID_POINT)
+node_pole = controllers.LearningNodeController('NODE_POLE', NODE_POLE)
+node_cart = controllers.LearningNodeController('NODE_CART', NODE_CART)
+node_point = controllers.LearningNodeController('NODE_POINT', NODE_POINT)
+learner = controllers.RotatingLearningController()
+learner.add_controller(pid_cart)
+learner.add_controller(pid_pole)
+learner.add_controller(pid_point)
+learner.add_controller(node_pole)
+learner.add_controller(node_cart)
+learner.add_controller(node_point)
 
 
 def main():
     env = gym.make('CartPole-v1')
-    environment = controllers.Environment(env, learning_agent, CartPole(env))
+    environment = controllers.EnvironmentRunner(env, learner, CartPole(env))
     # environment.controller.episode = environment.episode = Settings.EPISODE_CAP // 10 * 7
 
     environment.start()

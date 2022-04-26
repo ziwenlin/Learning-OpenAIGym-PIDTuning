@@ -213,7 +213,7 @@ class TestNodeController(InOutController.BaseTest):
 class TestLearningMultiController(LearningController.BaseTest, RotatingController.BaseTest):
     # Todo add more tests here
     def setUp(self) -> None:
-        self.controller = controllers.LearningMultiController()
+        self.controller = controllers.RotatingLearningController()
         # self.controller.add_controller(controllers.LearningPIDController())
 
     def test_reflect_is_counting(self):
