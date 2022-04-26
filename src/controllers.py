@@ -1,5 +1,6 @@
 import abc
 import textwrap
+from abc import ABC
 from typing import List
 
 import gym
@@ -9,29 +10,33 @@ import settings
 
 
 class InOutController:
-    output = 0
+    @abc.abstractmethod
+    def __init__(self):
+        self.output = 0
 
     @abc.abstractmethod
-    def set_control(self, preset):
-        raise NotImplementedError
+    def set_control(self, preset: tuple):
+        pass
 
     @abc.abstractmethod
     def get_control(self) -> tuple:
-        raise NotImplementedError
+        pass
 
     @abc.abstractmethod
-    def get_output(self, value, target) -> float:
-        raise NotImplementedError
+    def get_output(self, values: tuple, target: float) -> float:
+        pass
 
     @abc.abstractmethod
     def reset(self):
-        raise NotImplementedError
+        pass
 
 
 class LearningController:
-    previous_rewards = []
-    current_rewards = []
-    name = ''
+    @abc.abstractmethod
+    def __init__(self, name=''):
+        self.previous_rewards = []
+        self.current_rewards = []
+        self.name = name
 
     @abc.abstractmethod
     def explore(self) -> None:
@@ -73,6 +78,7 @@ class EnvironmentController:
 
 class PIDController(InOutController):
     def __init__(self, preset):
+        super().__init__()
         self.d_value = 0
         self.i_value = 0
 
@@ -84,8 +90,8 @@ class PIDController(InOutController):
     def get_control(self):
         return self.p_control, self.i_control, self.d_control
 
-    def get_output(self, value, target):
-        error = target - value
+    def get_output(self, values, target):
+        error = target - sum(values)
 
         p = self.p_control * error
         i = self.i_control * (error + self.i_value)
@@ -93,7 +99,8 @@ class PIDController(InOutController):
 
         self.i_value += error
         self.d_value = error  # Used as previous error
-        return p + i + d
+        self.output = p + i + d
+        return self.output
 
     def reset(self):
         self.output = 0
@@ -103,6 +110,7 @@ class PIDController(InOutController):
 
 class NodeController(InOutController):
     def __init__(self, preset):
+        super().__init__()
         self.control = preset
 
     def set_control(self, preset):
@@ -115,19 +123,18 @@ class NodeController(InOutController):
         output = offset
         for weight, value in zip(self.control, observation):
             output += weight * value
+        self.output = output
         return output
 
     def reset(self):
         self.output = 0
 
 
-class LearningInOutController(InOutController, LearningController):
+class LearningInOutController(InOutController, LearningController, ABC):
     def __init__(self, name='', preset=(0, 0, 0)):
-        super().__init__(preset)
-        self.name = name
-        self.current_rewards = []
+        InOutController.__init__(self)
+        LearningController.__init__(self, name)
         self.current_control = preset
-        self.previous_rewards = []
         self.previous_control = preset
 
     def get_string(self):
@@ -152,8 +159,8 @@ class LearningInOutController(InOutController, LearningController):
                     settings.MULTIPLIER_RAND * settings.MULTIPLIER_EPSILON
             )
 
-        self.set_control(new_control)
         self.current_control = tuple(new_control)
+        self.set_control(self.current_control)
 
     def reflect(self):
         previous_rewards = self.previous_rewards
@@ -190,25 +197,25 @@ class LearningInOutController(InOutController, LearningController):
 
 class LearningPIDController(LearningInOutController, PIDController):
     def __init__(self, name='', preset=(0, 0, 0)):
-        super().__init__(name, preset)
+        LearningInOutController.__init__(self, name, preset)
+        PIDController.__init__(self, preset)
 
 
 class LearningNodeController(LearningInOutController, NodeController):
     def __init__(self, name='', preset=None):
-        super().__init__(name, preset)
+        LearningInOutController.__init__(self, name, preset)
+        NodeController.__init__(self, preset)
         if preset is None:
             raise ValueError('Please provide a preset')
 
 
-class LearningMultiController(LearningController):
+class RotatingController():
     def __init__(self):
-        self.controllers: List[LearningController] = []
-        self.selected: LearningController = LearningController()
-        self.is_rotating = True
+        self.controllers: List[LearningInOutController] = []
+        self.selected = LearningInOutController()
         self.index = 0
-        self.count = 0
 
-    def add_controller(self, controller: LearningController):
+    def add_controller(self, controller: LearningInOutController):
         self.controllers.append(controller)
         if not len(self.controllers) > 1:
             self.select_controller(0)
@@ -217,9 +224,7 @@ class LearningMultiController(LearningController):
         if len(self.controllers) <= index:
             index = 0
         self.index = index
-        self.count = 0
         self.selected = self.controllers[index]
-        self.name = self.selected.name
 
     def get_string(self) -> str:
         return self.selected.get_string()
@@ -227,7 +232,22 @@ class LearningMultiController(LearningController):
     def next_controller(self):
         self.select_controller(self.index + 1)
 
+
+class LearningMultiController(LearningController, RotatingController):
+    def __init__(self):
+        LearningController.__init__(self)
+        RotatingController.__init__(self)
+        self.is_rotating = True
+        self.is_next = False
+        self.count = 0
+
     def explore(self) -> None:
+        if self.is_rotating and self.is_next:
+            self.next_controller()
+            self.name = self.selected.name
+            self.previous_rewards = []
+            self.is_next = False
+            self.count = 0
         self.selected.explore()
 
     def reflect(self) -> None:
@@ -240,25 +260,39 @@ class LearningMultiController(LearningController):
         elif sum(self.current_rewards) >= sum(self.previous_rewards):
             self.previous_rewards = self.current_rewards
             self.count += 1
-        elif self.is_rotating:
-            self.next_controller()
-            self.previous_rewards.clear()
         else:
-            pass
-        if self.is_rotating and self.count > 10:
-            self.next_controller()
-            self.previous_rewards.clear()
+            self.is_next = True
+        if self.count >= 10:
+            self.is_next = True
         self.current_rewards = []
 
-    def reward(self, reward):
+    def get_string(self) -> str:
+        return RotatingController.get_string(self)
+
+    def reset(self):
         for controller in self.controllers:
             controller.reset()
+
+    def reward(self, reward):
         self.current_rewards.append(reward)
+        self.reset()
 
 
-# class GeneticEvolutionController(LearningController):
+# class GeneticMultiController(LearningController):
 #     def __init__(self):
+#         self.controllers: List[LearningController] = []
+#         self.selected: LearningController = LearningController()
+#         self.is_rotating = True
+#         self.index = 0
+#         self.count = 0
+#         self.previous_rewards = []
+#         self.current_rewards = []
 #
+# class GeneticInOutController(InOutController, LearningController):
+#     def __init__(self, name='', preset=(0, 0, 0)):
+#         super().__init__(preset)
+#         self.name = name
+
 
 class EnvironmentMonitor:
     def __init__(self):
@@ -346,7 +380,7 @@ class Environment:
                     pass
                 elif episode % settings.EPISODE_PRINT == 0 or \
                         episode % settings.EPISODE_SHOW == 0:
-                    print("Episode {} finished after {} timesteps"
+                    print("Episode {} finished after {} time steps"
                           .format(episode, time_steps + 1))
                 break
 
@@ -385,7 +419,7 @@ class Environment:
             observation, reward, done, info = self.env.step(action)
             rewards += reward
             if done:
-                print("Episode {} finished after {} timesteps"
+                print("Episode {} finished after {} time steps"
                       .format(1, time_steps + 1))
                 print("Collected rewards:", rewards)
                 break
