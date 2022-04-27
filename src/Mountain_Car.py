@@ -8,8 +8,10 @@ class MountainCar(controllers.EnvironmentController):
 
     def get_action(self, observation: gym.core.ObsType) -> gym.core.ActType:
         output = 0
-        position = pid_point.get_output(observation[0] + observation[1], self.position)
-        output += pid_cart.get_output(observation[0] + observation[1], position)
+        n_point = node_point.get_output(observation, 0.0)
+        n_cart = node_cart.get_output(observation, 0.0)
+        position = pid_point.get_output((n_point,), self.position)
+        output += pid_cart.get_output((n_cart,), position)
         # if observation[1] < 0:
         #     output = cart_agent.get_output(observation[0], 0.6)
         # elif observation[1] > 0:
@@ -19,10 +21,13 @@ class MountainCar(controllers.EnvironmentController):
 
     def get_reward(self, observation: gym.core.ObsType) -> float:
         reward = 0
-        if learner.name in ('PID_CART', 'NODE_CART'):
-            reward += abs(observation[1]) ** 0.5
-        elif learner.name in ('PID_POINT', 'NODE_POINT'):
-            reward += abs(observation[1]) ** 0.5
+        position, speed = observation
+        if learner.name in ('PID_CART'):
+            reward += abs(speed) ** 0.5
+            reward += abs(position - 0.5) ** 0.5
+        elif learner.name in ('PID_POINT', 'NODE_POINT', 'NODE_CART'):
+            reward += abs(speed) ** 0.5
+            reward -= abs(position - 0.5) ** 0.5
         # reward -= abs(observation[0] - 0.50)
         # reward += abs(observation[1] * 100)
         return reward
@@ -72,6 +77,9 @@ def main():
         except KeyboardInterrupt:
             break
     environment.stop()
+    for i in range(len(learner.controllers)):
+        learner.select_controller(i)
+        print(learner.selected.name, '=', learner.get_string())
 
 
 if __name__ == '__main__':

@@ -51,11 +51,11 @@ class LearningController:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_string(self) -> str:
+    def reset(self):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def reset(self):
+    def get_string(self) -> str:
         raise NotImplementedError
 
 
@@ -138,28 +138,12 @@ class LearningInOutController(InOutController, LearningController, ABC):
         self.previous_control = preset
 
     def get_string(self):
-        return f'{tuple(float("{:.4f}".format(x)) for x in self.get_control())}'
+        return get_tuple_string(self.get_control())
 
     def explore(self):
-        previous_control = self.previous_control
-        new_control = list(self.current_control)
-
-        # Todo make explore progress comparison than to do it randomly
-        for i in range(len(new_control)):
-            improve = settings.MULTIPLIER_IMPROVE * settings.MULTIPLIER_EPSILON
-            if previous_control[i] != new_control[i]:
-                if np.random.rand() > settings.EPSILON:
-                    new_control[i] += (new_control[i] - previous_control[i]) * improve
-                    break
-        else:
-            # Random explore settings
-            i = np.random.randint(len(new_control))
-            new_control[i] += (
-                    (np.random.rand() - 0.5) *
-                    settings.MULTIPLIER_RAND * settings.MULTIPLIER_EPSILON
-            )
-
-        self.current_control = tuple(new_control)
+        new_control = get_mutated_control_improvement(
+            self.current_control, self.previous_control)
+        self.current_control = new_control
         self.set_control(self.current_control)
 
     def reflect(self):
@@ -200,6 +184,12 @@ class LearningPIDController(LearningInOutController, PIDController):
         LearningInOutController.__init__(self, name, preset)
         PIDController.__init__(self, preset)
 
+    # def explore(self):
+    #     new_control = get_mutated_pid_improved(self.current_control,
+    #                                            self.previous_control)
+    #     self.current_control = new_control
+    #     self.set_control(self.current_control)
+
 
 class LearningNodeController(LearningInOutController, NodeController):
     def __init__(self, name='', preset=None):
@@ -209,16 +199,17 @@ class LearningNodeController(LearningInOutController, NodeController):
             raise ValueError('Please provide a preset')
 
 
-class RotatingController():
+class RotatingController:
     def __init__(self):
-        self.controllers: List[LearningInOutController] = []
-        self.selected = LearningInOutController()
+        self.controllers: List[LearningController] = []
+        self.selected = LearningController()
         self.index = 0
 
-    def add_controller(self, controller: LearningInOutController):
+    def add_controller(self, controller: LearningController):
         self.controllers.append(controller)
-        if not len(self.controllers) > 1:
-            self.select_controller(0)
+        if len(self.controllers) > 1:
+            return
+        self.select_controller(0)
 
     def select_controller(self, index):
         if len(self.controllers) <= index:
@@ -366,8 +357,9 @@ class EnvironmentRunner:
             self.env.render()
         observation = self.env.reset()
         self.controller.reset()
+        self.learner.reset()
         for time_steps in range(settings.TIME_STEPS):
-            if episode % settings.EPISODE_SHOW == 0:
+            if episode % settings.EPISODE_SHOW == 1:
                 self.env.render()
 
             action = self.controller.get_action(observation)
@@ -426,6 +418,10 @@ class EnvironmentRunner:
         self.stop()
 
 
+def get_tuple_string(control: tuple):
+    return f'{tuple(float(f"{x:.4f}") for x in control)}'
+
+
 def get_improvement(current, previous):
     if current > 0 and previous > 0:
         pass
@@ -440,3 +436,60 @@ def get_improvement(current, previous):
         previous = 10
     improvement = current / previous
     return improvement
+
+
+def get_mutated_pid_improved(new_control, previous_control):
+    if type(new_control) is not list:
+        new_control = list(new_control)
+    # Todo make explore progress comparison than to do it randomly
+    for i in range(len(new_control)):
+        # Mutate parameter that has been changed before
+        if previous_control[i] != new_control[i]:
+            if np.random.rand() > settings.EPSILON:
+                improve = settings.MULTIPLIER_IMPROVE * settings.MULTIPLIER_EPSILON
+                new_control[i] += (new_control[i] - previous_control[i]) * improve
+            break
+    else:
+        # Random explore settings which has not been changed
+        i = np.random.randint(len(new_control))
+        while previous_control[i] != new_control[i]:
+            i = np.random.randint(len(new_control))
+        pid_multipliers = (10, 0.1, 2)[i]
+        new_control[i] += (
+                (np.random.rand() - 0.5) * pid_multipliers *
+                settings.MULTIPLIER_RAND * settings.MULTIPLIER_EPSILON
+        )
+    return tuple(new_control)
+
+
+def get_mutated_control_improvement(new_control, previous_control):
+    if type(new_control) is not list:
+        new_control = list(new_control)
+    for i in range(len(new_control)):
+        # Mutate parameter that has been changed before
+        if previous_control[i] != new_control[i]:
+            if np.random.rand() > settings.EPSILON:
+                improve = settings.MULTIPLIER_IMPROVE * settings.MULTIPLIER_EPSILON
+                new_control[i] += (new_control[i] - previous_control[i]) * improve
+            break
+    else:
+        # Random explore settings which has not been changed
+        i = np.random.randint(len(new_control))
+        while previous_control[i] != new_control[i]:
+            i = np.random.randint(len(new_control))
+        new_control[i] += (
+                (np.random.rand() - 0.5) *
+                settings.MULTIPLIER_RAND * settings.MULTIPLIER_EPSILON
+        )
+    return tuple(new_control)
+
+
+def get_mutated_control_random(control):
+    # Random explore settings
+    new_control = list(control)
+    i = np.random.randint(len(new_control))
+    new_control[i] += (
+            (np.random.rand() - 0.5) *
+            settings.MULTIPLIER_RAND * settings.MULTIPLIER_EPSILON
+    )
+    return tuple(new_control)

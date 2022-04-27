@@ -6,16 +6,23 @@ import controllers
 
 
 class CartPole(controllers.EnvironmentController):
-    position = 0.0
     episode = 0
+    progress = 0
+    difficulty = 0
+    position = 0.0
 
-    def reset(self):
+    def reset(self, seed=None):
+        if seed is not None:
+            numpy.random.seed(seed)
         self.episode += 1
-        progress = self.episode / settings.EPISODE_CAP
-        self.position = numpy.random.uniform(-2, 2) * progress
+        episode = self.episode
+        intervals = settings.EPISODE_LEARN
+        self.progress = (episode % intervals * intervals) // settings.EPISODE_CAP
+        self.difficulty = self.progress * numpy.random.rand()
+        self.position = 2 * self.difficulty
 
     def get_action(self, observation: gym.core.ObsType) -> gym.core.ActType:
-        output = 0
+        output = self.difficulty
         position = pid_point.get_output((node_point.get_output(observation, 0),), self.position)
         output += pid_pole.get_output((node_pole.get_output(observation, 0),), 0.0)
         output += pid_cart.get_output((node_cart.get_output(observation, 0),), position)
@@ -23,12 +30,16 @@ class CartPole(controllers.EnvironmentController):
 
     def get_reward(self, observation: gym.core.ObsType) -> float:
         reward = 0
+        cart_x, cart_v, pole_p, pole_v = observation
         if learner.name in ('PID_POLE', 'NODE_POLE'):
-            reward -= abs(observation[2] * 0.80) ** 0.5
+            reward -= abs(pole_p * 0.80) ** 0.5
         elif learner.name in ('PID_CART', 'NODE_CART'):
-            reward -= abs(observation[0] - self.position) ** 0.5
+            reward -= abs(cart_v - self.position) ** 0.5
         elif learner.name in ('PID_POINT', 'NODE_POINT'):
-            reward -= abs(observation[0] - self.position) ** 0.5
+            reward -= abs(cart_v - self.position) ** 0.5
+        else:
+            reward -= abs(cart_v - self.position) ** 0.5
+            reward -= abs(pole_p * 0.80) ** 0.5
         return reward
 
 
@@ -69,7 +80,6 @@ NODE_POLE = (0, 0, 0, 0)
 NODE_CART = (0, 0, 0, 0)
 NODE_POINT = (0, 0, 0, 0)
 
-
 pid_pole = controllers.LearningPIDController('PID_POLE', PID_POLE)
 pid_cart = controllers.LearningPIDController('PID_CART', PID_CART)
 pid_point = controllers.LearningPIDController('PID_POINT', PID_POINT)
@@ -80,8 +90,8 @@ learner = controllers.RotatingLearningController()
 learner.add_controller(pid_cart)
 learner.add_controller(pid_pole)
 learner.add_controller(pid_point)
-learner.add_controller(node_pole)
 learner.add_controller(node_cart)
+learner.add_controller(node_pole)
 learner.add_controller(node_point)
 
 
@@ -98,6 +108,10 @@ def main():
         except KeyboardInterrupt:
             break
     environment.stop()
+    for i in range(len(learner.controllers)):
+        learner.select_controller(i)
+        print(learner.selected.name, '=', learner.get_string())
+
 
 def main1():
     env = gym.make('CartPole-v1')
