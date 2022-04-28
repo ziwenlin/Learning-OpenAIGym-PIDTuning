@@ -1,4 +1,4 @@
-from unittest import TestCase
+from unittest import TestCase, mock
 
 import controllers
 
@@ -7,8 +7,8 @@ PID = (10, 0.1, 2)
 NODE = (0.5, 0.1, 2, 0)
 
 
-class InOutController:
-    class BaseTest(TestCase):
+class BaseTest:
+    class InOutController(TestCase):
         def setUp(self) -> None:
             self.controller = controllers.InOutController()
 
@@ -31,11 +31,9 @@ class InOutController:
             control = self.controller.get_control()
             self.assertEqual(tuple, type(control))
 
-
-class LearningController:
-    class BaseTest(TestCase):
+    class ImprovingController(TestCase):
         def setUp(self) -> None:
-            self.controller = controllers.LearningController()
+            self.controller = controllers.ImprovingController()
 
         def test_reward_being_added_to_current_reward(self):
             for i in [1, 4, 6, 7, 3]:  # 21
@@ -66,12 +64,13 @@ class LearningController:
             self.assertEqual([1, 4, 6, 7, 3], rewards)
 
         def test_reflect_lower_reward_at_second_reflect(self):
-            for i in [5, 7, 9, 3, 1]:  # 25
-                self.controller.reward(i)
-            self.controller.reflect()
-            for i in [1, 4, 6, 7, 3]:  # 21
-                self.controller.reward(i)
-            self.controller.reflect()
+            with mock.patch('numpy.random.rand', lambda: 0.9):
+                for i in [5, 7, 9, 3, 1]:  # 25, 1, 9
+                    self.controller.reward(i)
+                self.controller.reflect()
+                for i in [1, 4, 6, 7, 3]:  # 21, 1, 7
+                    self.controller.reward(i)
+                self.controller.reflect()
 
             rewards = self.controller.current_rewards
             self.assertEqual([], rewards)
@@ -79,21 +78,20 @@ class LearningController:
             self.assertEqual([5, 7, 9, 3, 1], rewards)
 
         def test_reflect_higher_reward_at_second_reflect(self):
-            for i in [1, 4, 6, 7, 3]:  # 21
-                self.controller.reward(i)
-            self.controller.reflect()
-            for i in [5, 7, 9, 3, 1]:  # 25
-                self.controller.reward(i)
-            self.controller.reflect()
+            with mock.patch('numpy.random.rand', lambda: 0.9):
+                for i in [1, 4, 6, 7, 3]:  # 21
+                    self.controller.reward(i)
+                self.controller.reflect()
+                for i in [5, 7, 9, 3, 1]:  # 25
+                    self.controller.reward(i)
+                self.controller.reflect()
 
             rewards = self.controller.current_rewards
             self.assertEqual([], rewards)
             rewards = self.controller.previous_rewards
             self.assertEqual([5, 7, 9, 3, 1], rewards)
 
-
-class RotatingController:
-    class BaseTest(TestCase):
+    class RotatingController(TestCase):
         def setUp(self) -> None:
             self.controller = controllers.RotatingController()
 
@@ -112,7 +110,7 @@ class RotatingController:
             controller = self.controller
             if len(self.controller.controllers) == 0:
                 self.assertEqual(0, len(controller.controllers))
-                controller.add_controller(controllers.LearningPIDController())
+                controller.add_controller(controllers.ImprovingPIDController())
             self.assertEqual(1, len(controller.controllers))
             self.assertEqual(controller.selected,
                              controller.controllers[0])
@@ -139,7 +137,7 @@ class RotatingController:
 #             self.controller.reset()
 
 
-class TestPIDController(InOutController.BaseTest):
+class TestPIDController(BaseTest.InOutController):
     def setUp(self) -> None:
         self.controller = controllers.PIDController(PID)
 
@@ -196,7 +194,7 @@ class TestPIDController(InOutController.BaseTest):
         self.assertEqual(0, self.controller.d_value)
 
 
-class TestNodeController(InOutController.BaseTest):
+class TestNodeController(BaseTest.InOutController):
     def setUp(self) -> None:
         self.controller = controllers.NodeController(NODE)
 
@@ -213,10 +211,10 @@ class TestNodeController(InOutController.BaseTest):
         self.assertEqual(0 + 1 + -4 + 0, output)
 
 
-class TestLearningInOutController(LearningController.BaseTest):
+class TestImprovingInOutController(BaseTest.ImprovingController):
     def setUp(self) -> None:
         # Using PID because the following tests need an implemented controller
-        self.controller = controllers.LearningPIDController()
+        self.controller = controllers.ImprovingInOutController()
 
     def test_get_string(self):
         text = self.controller.get_string()
@@ -251,34 +249,34 @@ class TestLearningInOutController(LearningController.BaseTest):
         self.assertEqual((1, 2, 3), self.controller.previous_control)
 
 
-class TestLearningNodeController(LearningController.BaseTest):
+class TestLearningNodeController(BaseTest.ImprovingController):
     def setUp(self) -> None:
-        self.controller = controllers.LearningNodeController(NAME, NODE)
+        self.controller = controllers.ImprovingNodeController(NAME, NODE)
 
     def test_init_none_preset(self):
         with self.assertRaises(ValueError):
-            controllers.LearningNodeController()
+            controllers.ImprovingNodeController()
 
     def test_get_string(self):
         text = self.controller.get_string()
         self.assertEqual('(0.5, 0.1, 2.0, 0.0)', text)
 
 
-class TestLearningPIDController(LearningController.BaseTest):
+class TestLearningPIDController(BaseTest.ImprovingController):
     def setUp(self) -> None:
-        self.controller = controllers.LearningPIDController(NAME, PID)
+        self.controller = controllers.ImprovingPIDController(NAME, PID)
 
     def test_get_string(self):
         text = self.controller.get_string()
         self.assertEqual('(10.0, 0.1, 2.0)', text)
 
 
-class TestRotatingLearningController(LearningController.BaseTest,
-                                     RotatingController.BaseTest):
+class TestRotatingLearningController(BaseTest.ImprovingController,
+                                     BaseTest.RotatingController):
     # Todo add more tests here
     def setUp(self) -> None:
-        self.controller = controllers.RotatingLearningController()
-        self.controller.add_controller(controllers.LearningPIDController())
+        self.controller = controllers.RotatingImprovingController()
+        self.controller.add_controller(controllers.ImprovingPIDController())
 
     def test_reflect_is_counting(self):
         self.assertEqual(0, self.controller.count)
@@ -425,36 +423,12 @@ class Test(TestCase):
         result = controllers.get_improvement(-1, 10)
         self.assertLess(result, 0.1)
 
-    def test_get_mutated_control_improvement_returns_tuple(self):
-        result = controllers.get_mutated_control_improvement((0, 0), (0, 0))
+    def test_get_control_mutated_returns_tuple(self):
+        result = controllers.get_control_mutated((0, 0), (0, 0))
         self.assertEqual(tuple, type(result))
 
-    def test_get_mutated_control_improvement_is_different(self):
-        result = controllers.get_mutated_control_improvement((0, 0), (0, 0))
-        if result[0] == 0:
-            self.assertNotEqual(0, result[1])
-        else:
-            self.assertNotEqual(0, result[0])
-            self.assertEqual(0, result[1])
-
-    def test_get_mutated_pid_returns_tuple(self):
-        result = controllers.get_mutated_pid_improved((0, 0), (0, 0))
-        self.assertEqual(tuple, type(result))
-
-    def test_get_mutated_pid_is_different(self):
-        result = controllers.get_mutated_pid_improved((0, 0), (0, 0))
-        if result[0] == 0:
-            self.assertNotEqual(0, result[1])
-        else:
-            self.assertNotEqual(0, result[0])
-            self.assertEqual(0, result[1])
-
-    def test_get_mutated_control_returns_tuple(self):
-        result = controllers.get_mutated_control_random((0, 0))
-        self.assertEqual(tuple, type(result))
-
-    def test_get_mutated_control_is_different(self):
-        result = controllers.get_mutated_control_random((0, 0))
+    def test_get_control_mutated_improvement_is_different(self):
+        result = controllers.get_control_mutated((0, 0), (0, 0))
         if result[0] == 0:
             self.assertNotEqual(0, result[1])
         else:

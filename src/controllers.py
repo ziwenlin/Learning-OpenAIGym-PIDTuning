@@ -1,6 +1,6 @@
 import abc
 import textwrap
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import List
 
 import gym
@@ -10,51 +10,49 @@ import settings
 
 
 class InOutController:
-    @abc.abstractmethod
+    @abstractmethod
     def __init__(self):
         self.output = 0
 
-    @abc.abstractmethod
+    @abstractmethod
     def set_control(self, preset: tuple):
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def get_control(self) -> tuple:
-        pass
+        return 0, 0, 0
 
-    @abc.abstractmethod
+    @abstractmethod
     def get_output(self, values: tuple, target: float) -> float:
-        pass
+        return 0
 
-    @abc.abstractmethod
+    @abstractmethod
     def reset(self):
-        pass
+        self.output = 0
 
 
 class LearningController:
-    @abc.abstractmethod
+    @abstractmethod
     def __init__(self, name=''):
-        self.previous_rewards = []
-        self.current_rewards = []
         self.name = name
 
-    @abc.abstractmethod
+    @abstractmethod
     def explore(self) -> None:
         raise NotImplementedError
 
-    @abc.abstractmethod
+    @abstractmethod
     def reflect(self) -> None:
         raise NotImplementedError
 
-    @abc.abstractmethod
-    def reward(self, reward):
+    @abstractmethod
+    def reward(self, reward) -> None:
         raise NotImplementedError
 
-    @abc.abstractmethod
-    def reset(self):
+    @abstractmethod
+    def reset(self) -> None:
         raise NotImplementedError
 
-    @abc.abstractmethod
+    @abstractmethod
     def get_string(self) -> str:
         raise NotImplementedError
 
@@ -63,15 +61,15 @@ class EnvironmentController:
     def __init__(self, env: gym.Env):
         self.action_space = env.action_space
 
-    @abc.abstractmethod
+    @abstractmethod
     def reset(self):
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def get_action(self, observation: gym.core.ObsType) -> gym.core.ActType:
         return self.action_space.sample()
 
-    @abc.abstractmethod
+    @abstractmethod
     def get_reward(self, observation: gym.core.ObsType) -> float:
         return 0
 
@@ -130,10 +128,28 @@ class NodeController(InOutController):
         self.output = 0
 
 
-class LearningInOutController(InOutController, LearningController, ABC):
+class ImprovingController(LearningController, ABC):
+    def __init__(self, name=''):
+        super().__init__(name)
+        self.previous_rewards = []
+        self.current_rewards = []
+        self.is_improving = [False, False, False]
+
+    def reward(self, reward):
+        self.current_rewards.append(reward)
+
+    def reflect(self) -> None:
+        self.is_improving = get_is_improving(
+            self.current_rewards, self.previous_rewards
+        )
+        self.previous_rewards = self.current_rewards
+        self.current_rewards = []
+
+
+class ImprovingInOutController(InOutController, ImprovingController, ABC):
     def __init__(self, name='', preset=(0, 0, 0)):
         InOutController.__init__(self)
-        LearningController.__init__(self, name)
+        ImprovingController.__init__(self, name)
         self.current_control = preset
         self.previous_control = preset
 
@@ -141,47 +157,52 @@ class LearningInOutController(InOutController, LearningController, ABC):
         return get_tuple_string(self.get_control())
 
     def explore(self):
-        new_control = get_mutated_control_improvement(
+        self.current_control = get_control_mutated(
             self.current_control, self.previous_control)
-        self.current_control = new_control
         self.set_control(self.current_control)
 
     def reflect(self):
         previous_rewards = self.previous_rewards
         current_rewards = self.current_rewards
+        ImprovingController.reflect(self)
 
-        if len(previous_rewards) == 0:
-            # When it is the first run
-            self.previous_rewards = current_rewards
-            self.previous_control = self.current_control
-            has_improved = False
-        else:
+        avg, low, high = self.is_improving
+        fail_chance = np.random.rand() * settings.EPSILON_DISCOUNT
+        if not low:
             current_min = min(current_rewards)
             previous_min = min(previous_rewards)
             improvement = get_improvement(current_min, previous_min)
-            has_improved = improvement > np.random.rand() * settings.EPSILON_DISCOUNT
+            low = improvement > fail_chance
+        if not high:
+            current_max = max(current_rewards)
+            previous_max = max(previous_rewards)
+            improvement = get_improvement(current_max, previous_max)
+            high = improvement > fail_chance
+        if not avg:
+            current_avg = sum(current_rewards)
+            previous_avg = sum(previous_rewards)
+            improvement = get_improvement(current_avg, previous_avg)
+            avg = improvement > fail_chance
 
-        if has_improved and sum(current_rewards) >= sum(previous_rewards):
+        if avg or low and high:
             # When the newer control has scored an equal or better score
             # Overwrite the previous reward and control
             self.previous_rewards = current_rewards
             self.previous_control = self.current_control
         else:
             # Revert the changes
-            # Reset current reward and control
+            # Restore previous reward and current control
+            self.previous_rewards = previous_rewards
             self.current_control = self.previous_control
 
         self.set_control(self.current_control)
         self.current_rewards = []
 
-    def reward(self, reward):
-        self.reset()
-        self.current_rewards.append(reward)
 
 
-class LearningPIDController(LearningInOutController, PIDController):
+class ImprovingPIDController(ImprovingInOutController, PIDController):
     def __init__(self, name='', preset=(0, 0, 0)):
-        LearningInOutController.__init__(self, name, preset)
+        ImprovingInOutController.__init__(self, name, preset)
         PIDController.__init__(self, preset)
 
     # def explore(self):
@@ -191,9 +212,9 @@ class LearningPIDController(LearningInOutController, PIDController):
     #     self.set_control(self.current_control)
 
 
-class LearningNodeController(LearningInOutController, NodeController):
+class ImprovingNodeController(ImprovingInOutController, NodeController):
     def __init__(self, name='', preset=None):
-        LearningInOutController.__init__(self, name, preset)
+        ImprovingInOutController.__init__(self, name, preset)
         NodeController.__init__(self, preset)
         if preset is None:
             raise ValueError('Please provide a preset')
@@ -224,9 +245,9 @@ class RotatingController:
         self.select_controller(self.index + 1)
 
 
-class RotatingLearningController(LearningController, RotatingController):
+class RotatingImprovingController(ImprovingController, RotatingController):
     def __init__(self):
-        LearningController.__init__(self)
+        ImprovingController.__init__(self)
         RotatingController.__init__(self)
         self.is_rotating = True
         self.is_next = False
@@ -263,10 +284,6 @@ class RotatingLearningController(LearningController, RotatingController):
     def reset(self):
         for controller in self.controllers:
             controller.reset()
-
-    def reward(self, reward):
-        self.current_rewards.append(reward)
-        self.reset()
 
 
 # class GeneticMultiController(LearningController):
@@ -418,8 +435,8 @@ class EnvironmentRunner:
         self.stop()
 
 
-def get_tuple_string(control: tuple):
-    return f'{tuple(float(f"{x:.4f}") for x in control)}'
+def get_tuple_string(array: tuple):
+    return f'{tuple(float(f"{value:.4f}") for value in array)}'
 
 
 def get_improvement(current, previous):
@@ -438,58 +455,75 @@ def get_improvement(current, previous):
     return improvement
 
 
-def get_mutated_pid_improved(new_control, previous_control):
+def get_is_improving(current, previous):
+    is_improving = [False, False, False]
+    if len(previous) == 0:
+        is_improving = [True, True, True]
+    else:
+        is_improving[0] = sum(current) >= sum(previous)
+        is_improving[1] = min(current) > min(previous)
+        is_improving[2] = max(current) > max(previous)
+    return is_improving
+
+
+def get_control_mutated(new_control, previous_control, is_pid=False):
     if type(new_control) is not list:
         new_control = list(new_control)
-    # Todo make explore progress comparison than to do it randomly
-    for i in range(len(new_control)):
-        # Mutate parameter that has been changed before
-        if previous_control[i] != new_control[i]:
-            if np.random.rand() > settings.EPSILON:
-                improve = settings.MULTIPLIER_IMPROVE * settings.MULTIPLIER_EPSILON
-                new_control[i] += (new_control[i] - previous_control[i]) * improve
-            break
+    current_index = get_index_changed(new_control, previous_control)
+    if np.random.rand() > settings.EPSILON:
+        # Improve the changed setting
+        get_control_improved_mutation(new_control, previous_control, current_index)
+        return tuple(new_control)
+
+    # Random explore settings which has not been changed
+    random_index = get_index_random(len(new_control), current_index)
+    if is_pid:
+        multiplier = (10, 0.1, 2)[random_index]
     else:
-        # Random explore settings which has not been changed
-        i = np.random.randint(len(new_control))
-        while previous_control[i] != new_control[i]:
-            i = np.random.randint(len(new_control))
-        pid_multipliers = (10, 0.1, 2)[i]
-        new_control[i] += (
-                (np.random.rand() - 0.5) * pid_multipliers *
-                settings.MULTIPLIER_RAND * settings.MULTIPLIER_EPSILON
-        )
+        multiplier = 1
+    new_control[random_index] += get_mutation_random() * multiplier
     return tuple(new_control)
 
 
-def get_mutated_control_improvement(new_control, previous_control):
+def get_control_improved_mutation(new_control, old_control, index):
+    # Mutate parameter that has been changed before
     if type(new_control) is not list:
         new_control = list(new_control)
-    for i in range(len(new_control)):
-        # Mutate parameter that has been changed before
-        if previous_control[i] != new_control[i]:
-            if np.random.rand() > settings.EPSILON:
-                improve = settings.MULTIPLIER_IMPROVE * settings.MULTIPLIER_EPSILON
-                new_control[i] += (new_control[i] - previous_control[i]) * improve
-            break
-    else:
-        # Random explore settings which has not been changed
-        i = np.random.randint(len(new_control))
-        while previous_control[i] != new_control[i]:
-            i = np.random.randint(len(new_control))
-        new_control[i] += (
-                (np.random.rand() - 0.5) *
-                settings.MULTIPLIER_RAND * settings.MULTIPLIER_EPSILON
-        )
+    improve = get_mutation_improved(new_control, old_control, index)
+    new_control[index] += improve
     return tuple(new_control)
 
 
-def get_mutated_control_random(control):
-    # Random explore settings
-    new_control = list(control)
-    i = np.random.randint(len(new_control))
-    new_control[i] += (
-            (np.random.rand() - 0.5) *
-            settings.MULTIPLIER_RAND * settings.MULTIPLIER_EPSILON
-    )
-    return tuple(new_control)
+def get_control_random_mutation(control, index=-1):
+    # Random mutate parameter at index
+    if type(control) is not list:
+        control = list(control)
+    if index == -1:
+        index = np.random.randint(len(control))
+    control[index] += get_mutation_random()
+    return tuple(control)
+
+
+def get_mutation_improved(new_control, old_control, index):
+    improve = settings.MULTIPLIER_IMPROVE * settings.MULTIPLIER_EPSILON
+    difference = (new_control[index] - old_control[index])
+    return difference * improve
+
+
+def get_mutation_random():
+    improve = settings.MULTIPLIER_RAND * settings.MULTIPLIER_EPSILON
+    return (np.random.rand() - 0.5) * improve
+
+
+def get_index_changed(tuple_a, tuple_b):
+    for index in range(len(tuple_a)):
+        if tuple_b[index] != tuple_a[index]:
+            return index
+    return -1
+
+
+def get_index_random(size, not_index=-1):
+    random_index = np.random.randint(size)
+    while random_index == not_index:
+        random_index = np.random.randint(size)
+    return random_index
