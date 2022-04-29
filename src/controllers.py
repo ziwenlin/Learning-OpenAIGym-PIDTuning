@@ -166,23 +166,9 @@ class ImprovingInOutController(InOutController, ImprovingController, ABC):
         current_rewards = self.current_rewards
         ImprovingController.reflect(self)
 
-        avg, low, high = self.is_improving
-        fail_chance = np.random.rand() * settings.EPSILON_DISCOUNT
-        if not low:
-            current_min = min(current_rewards)
-            previous_min = min(previous_rewards)
-            improvement = get_improvement(current_min, previous_min)
-            low = improvement > fail_chance
-        if not high:
-            current_max = max(current_rewards)
-            previous_max = max(previous_rewards)
-            improvement = get_improvement(current_max, previous_max)
-            high = improvement > fail_chance
-        if not avg:
-            current_avg = sum(current_rewards)
-            previous_avg = sum(previous_rewards)
-            improvement = get_improvement(current_avg, previous_avg)
-            avg = improvement > fail_chance
+        is_improving = get_is_improving_random(
+            self.is_improving, current_rewards, previous_rewards)
+        avg, low, high = is_improving
 
         if avg or low and high:
             # When the newer control has scored an equal or better score
@@ -199,17 +185,15 @@ class ImprovingInOutController(InOutController, ImprovingController, ABC):
         self.current_rewards = []
 
 
-
 class ImprovingPIDController(ImprovingInOutController, PIDController):
     def __init__(self, name='', preset=(0, 0, 0)):
         ImprovingInOutController.__init__(self, name, preset)
         PIDController.__init__(self, preset)
 
-    # def explore(self):
-    #     new_control = get_mutated_pid_improved(self.current_control,
-    #                                            self.previous_control)
-    #     self.current_control = new_control
-    #     self.set_control(self.current_control)
+    def explore(self):
+        self.current_control = get_control_mutated(
+            self.current_control, self.previous_control, True)
+        self.set_control(self.current_control)
 
 
 class ImprovingNodeController(ImprovingInOutController, NodeController):
@@ -247,7 +231,7 @@ class RotatingController:
 
 class RotatingImprovingController(ImprovingController, RotatingController):
     def __init__(self):
-        ImprovingController.__init__(self)
+        ImprovingController.__init__(self, 'Rotating')
         RotatingController.__init__(self)
         self.is_rotating = True
         self.is_next = False
@@ -266,17 +250,19 @@ class RotatingImprovingController(ImprovingController, RotatingController):
         for reward in self.current_rewards:
             self.selected.reward(reward)
         self.selected.reflect()
-        if len(self.previous_rewards) == 0:
-            self.previous_rewards = self.current_rewards
-            self.count += 1
-        elif sum(self.current_rewards) >= sum(self.previous_rewards):
-            self.previous_rewards = self.current_rewards
+        previous_rewards = self.previous_rewards
+        current_rewards = self.current_rewards
+        ImprovingController.reflect(self)
+        avg, low, high = self.is_improving
+
+        if avg or low or high:
+            self.previous_rewards = current_rewards
             self.count += 1
         else:
+            self.previous_rewards = previous_rewards
             self.is_next = True
         if self.count >= 10:
             self.is_next = True
-        self.current_rewards = []
 
     def get_string(self) -> str:
         return RotatingController.get_string(self)
@@ -439,7 +425,7 @@ def get_tuple_string(array: tuple):
     return f'{tuple(float(f"{value:.4f}") for value in array)}'
 
 
-def get_improvement(current, previous):
+def get_improvement_gain(current, previous):
     if current > 0 and previous > 0:
         pass
     elif current > previous:
@@ -455,15 +441,33 @@ def get_improvement(current, previous):
     return improvement
 
 
-def get_is_improving(current, previous):
-    is_improving = [False, False, False]
-    if len(previous) == 0:
-        is_improving = [True, True, True]
+def get_is_improvement(bypass, new_values, old_values, func, threshold):
+    if bypass:
+        return bypass
+    value_new = func(new_values)
+    value_old = func(old_values)
+    improvement = get_improvement_gain(value_new, value_old)
+    return improvement > threshold
+
+
+def get_is_improving_random(improvements, new_values, old_values):
+    avg, low, high = improvements
+    fail_chance = np.random.rand() * settings.EPSILON_DISCOUNT
+    low = get_is_improvement(low, new_values, old_values, min, fail_chance)
+    high = get_is_improvement(high, new_values, old_values, max, fail_chance)
+    avg = get_is_improvement(avg, new_values, old_values, sum, fail_chance)
+    return avg, low, high
+
+
+def get_is_improving(new_values, old_values):
+    a, b, c = (True, True, True)
+    if len(old_values) == 0:
+        return a, b, c
     else:
-        is_improving[0] = sum(current) >= sum(previous)
-        is_improving[1] = min(current) > min(previous)
-        is_improving[2] = max(current) > max(previous)
-    return is_improving
+        a = sum(new_values) > sum(old_values)
+        b = min(new_values) > min(old_values)
+        c = max(new_values) > max(old_values)
+    return a, b, c
 
 
 def get_control_mutated(new_control, previous_control, is_pid=False):
@@ -472,13 +476,14 @@ def get_control_mutated(new_control, previous_control, is_pid=False):
     current_index = get_index_changed(new_control, previous_control)
     if np.random.rand() > settings.EPSILON:
         # Improve the changed setting
-        get_control_improved_mutation(new_control, previous_control, current_index)
+        get_control_improved_mutation(
+            new_control, previous_control, current_index)
         return tuple(new_control)
 
     # Random explore settings which has not been changed
     random_index = get_index_random(len(new_control), current_index)
     if is_pid:
-        multiplier = (10, 0.1, 2)[random_index]
+        multiplier = (5, 0.1, 2)[random_index]
     else:
         multiplier = 1
     new_control[random_index] += get_mutation_random() * multiplier

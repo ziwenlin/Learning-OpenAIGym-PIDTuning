@@ -233,8 +233,8 @@ class TestImprovingInOutController(BaseTest.ImprovingController):
         self.controller.current_rewards = [-1]
         self.controller.current_control = (1, 2, 3)
         self.assertEqual((0, 0, 0), self.controller.previous_control)
-
-        self.controller.reflect()
+        with mock.patch('numpy.random.rand', lambda: 1.0 / 0.9):
+            self.controller.reflect()
         self.assertEqual((0, 0, 0), self.controller.current_control)
         self.assertEqual((0, 0, 0), self.controller.previous_control)
 
@@ -243,8 +243,8 @@ class TestImprovingInOutController(BaseTest.ImprovingController):
         self.controller.current_rewards = [100]
         self.controller.current_control = (1, 2, 3)
         self.assertEqual((0, 0, 0), self.controller.previous_control)
-
-        self.controller.reflect()
+        with mock.patch('numpy.random.rand', lambda: 1.0 / 0.9):
+            self.controller.reflect()
         self.assertEqual((1, 2, 3), self.controller.current_control)
         self.assertEqual((1, 2, 3), self.controller.previous_control)
 
@@ -271,8 +271,8 @@ class TestLearningPIDController(BaseTest.ImprovingController):
         self.assertEqual('(10.0, 0.1, 2.0)', text)
 
 
-class TestRotatingLearningController(BaseTest.ImprovingController,
-                                     BaseTest.RotatingController):
+class TestRotatingImprovingController(BaseTest.ImprovingController,
+                                      BaseTest.RotatingController):
     # Todo add more tests here
     def setUp(self) -> None:
         self.controller = controllers.RotatingImprovingController()
@@ -297,130 +297,130 @@ class TestRotatingLearningController(BaseTest.ImprovingController,
 
 class Test(TestCase):
     def test_get_improvement_positive_not_zero(self):
-        result = controllers.get_improvement(10, 1)
+        result = controllers.get_improvement_gain(10, 1)
         self.assertEqual(10, result)
 
-        result = controllers.get_improvement(10, 2)
+        result = controllers.get_improvement_gain(10, 2)
         self.assertEqual(5, result)
 
-        result = controllers.get_improvement(10, 10)
+        result = controllers.get_improvement_gain(10, 10)
         self.assertEqual(1, result)
 
-        result = controllers.get_improvement(10, 100)
+        result = controllers.get_improvement_gain(10, 100)
         self.assertEqual(0.1, result)
 
-        result = controllers.get_improvement(0.1, 100)
+        result = controllers.get_improvement_gain(0.1, 100)
         self.assertEqual(0.001, result)
 
     def test_get_improvement_positive_at_zero(self):
-        result = controllers.get_improvement(0, 0.01)
+        result = controllers.get_improvement_gain(0, 0.01)
         self.assertLess(result, 0.5)
-        result = controllers.get_improvement(0, 0.1)
+        result = controllers.get_improvement_gain(0, 0.1)
         self.assertLess(result, 0.5)
-        result = controllers.get_improvement(0, 1)
+        result = controllers.get_improvement_gain(0, 1)
         self.assertLess(result, 0.334)
-        result = controllers.get_improvement(0, 10)
+        result = controllers.get_improvement_gain(0, 10)
         self.assertLess(result, 0.1)
 
-        result = controllers.get_improvement(10, 0)
+        result = controllers.get_improvement_gain(10, 0)
         self.assertGreater(result, 1)
-        result = controllers.get_improvement(1, 0)
+        result = controllers.get_improvement_gain(1, 0)
         self.assertGreater(result, 1)
-        result = controllers.get_improvement(0.1, 0)
+        result = controllers.get_improvement_gain(0.1, 0)
         self.assertGreater(result, 1)
-        result = controllers.get_improvement(0.01, 0)
+        result = controllers.get_improvement_gain(0.01, 0)
         self.assertGreater(result, 1)
 
     def test_get_improvement_both_zero(self):
-        result = controllers.get_improvement(0, 0)
+        result = controllers.get_improvement_gain(0, 0)
         self.assertGreater(result, 0.5)
 
     def test_get_improvement_both_equals(self):
-        result = controllers.get_improvement(-10, -10)
+        result = controllers.get_improvement_gain(-10, -10)
         self.assertGreater(result, 0.5)
-        result = controllers.get_improvement(-2, -2)
+        result = controllers.get_improvement_gain(-2, -2)
         self.assertGreater(result, 0.5)
-        result = controllers.get_improvement(-1.1, -1.1)
+        result = controllers.get_improvement_gain(-1.1, -1.1)
         self.assertGreater(result, 0.5)
-        result = controllers.get_improvement(-1, -1)
+        result = controllers.get_improvement_gain(-1, -1)
         self.assertGreater(result, 0.5)
-        result = controllers.get_improvement(-0.9, -0.9)
+        result = controllers.get_improvement_gain(-0.9, -0.9)
         self.assertGreater(result, 0.5)
-        result = controllers.get_improvement(-0.1, -0.1)
+        result = controllers.get_improvement_gain(-0.1, -0.1)
         self.assertGreater(result, 0.5)
-        result = controllers.get_improvement(0, 0)
+        result = controllers.get_improvement_gain(0, 0)
         self.assertGreater(result, 0.5)
 
-        result = controllers.get_improvement(0.1, 0.1)
+        result = controllers.get_improvement_gain(0.1, 0.1)
         self.assertGreater(result, 0.5)
-        result = controllers.get_improvement(0.9, 0.9)
+        result = controllers.get_improvement_gain(0.9, 0.9)
         self.assertGreater(result, 0.5)
-        result = controllers.get_improvement(1, 1)
+        result = controllers.get_improvement_gain(1, 1)
         self.assertGreater(result, 0.5)
-        result = controllers.get_improvement(1.1, 1.1)
+        result = controllers.get_improvement_gain(1.1, 1.1)
         self.assertGreater(result, 0.5)
-        result = controllers.get_improvement(2, 2)
+        result = controllers.get_improvement_gain(2, 2)
         self.assertGreater(result, 0.5)
-        result = controllers.get_improvement(10, 10)
+        result = controllers.get_improvement_gain(10, 10)
         self.assertGreater(result, 0.5)
-        result = controllers.get_improvement(100, 100)
+        result = controllers.get_improvement_gain(100, 100)
         self.assertGreater(result, 0.5)
 
     def test_get_improvement_negative_not_zero(self):
-        result = controllers.get_improvement(-10, -0.1)
+        result = controllers.get_improvement_gain(-10, -0.1)
         self.assertLess(result, 0.1)
-        result = controllers.get_improvement(-10, -1)
+        result = controllers.get_improvement_gain(-10, -1)
         self.assertLess(result, 0.1)
-        result = controllers.get_improvement(-10, -5)
+        result = controllers.get_improvement_gain(-10, -5)
         self.assertLess(result, 0.167)
-        result = controllers.get_improvement(-10, -9)
+        result = controllers.get_improvement_gain(-10, -9)
         self.assertLess(result, 0.5)
 
-        result = controllers.get_improvement(-10, -20)
+        result = controllers.get_improvement_gain(-10, -20)
         self.assertGreater(result, 1.0)
-        result = controllers.get_improvement(-1, -20)
+        result = controllers.get_improvement_gain(-1, -20)
         self.assertGreater(result, 1.0)
-        result = controllers.get_improvement(-0.1, -20)
+        result = controllers.get_improvement_gain(-0.1, -20)
         self.assertGreater(result, 1.0)
-        result = controllers.get_improvement(-0.1, -0.2)
+        result = controllers.get_improvement_gain(-0.1, -0.2)
         self.assertGreater(result, 1.0)
 
     def test_get_improvement_negative_at_zero(self):
-        result = controllers.get_improvement(-0.1, 0)
+        result = controllers.get_improvement_gain(-0.1, 0)
         self.assertLess(result, 0.5)
-        result = controllers.get_improvement(-1, 0)
+        result = controllers.get_improvement_gain(-1, 0)
         self.assertLess(result, 0.334)
-        result = controllers.get_improvement(-10, 0)
+        result = controllers.get_improvement_gain(-10, 0)
         self.assertLess(result, 0.1)
 
-        result = controllers.get_improvement(0, -10)
+        result = controllers.get_improvement_gain(0, -10)
         self.assertGreater(result, 1)
-        result = controllers.get_improvement(0, -1)
+        result = controllers.get_improvement_gain(0, -1)
         self.assertGreater(result, 1)
-        result = controllers.get_improvement(0, -0.1)
+        result = controllers.get_improvement_gain(0, -0.1)
         self.assertGreater(result, 1)
-        result = controllers.get_improvement(0, -0.01)
+        result = controllers.get_improvement_gain(0, -0.01)
         self.assertGreater(result, 1)
 
     def test_get_improvement_positive_negative(self):
-        result = controllers.get_improvement(10, -10)
+        result = controllers.get_improvement_gain(10, -10)
         self.assertGreater(result, 1)
-        result = controllers.get_improvement(-10, 10)
+        result = controllers.get_improvement_gain(-10, 10)
         self.assertLess(result, 0.1)
 
-        result = controllers.get_improvement(1, -10)
+        result = controllers.get_improvement_gain(1, -10)
         self.assertGreater(result, 1)
-        result = controllers.get_improvement(-10, 1)
+        result = controllers.get_improvement_gain(-10, 1)
         self.assertLess(result, 0.1)
 
-        result = controllers.get_improvement(1, -1)
+        result = controllers.get_improvement_gain(1, -1)
         self.assertGreater(result, 1)
-        result = controllers.get_improvement(-1, 1)
+        result = controllers.get_improvement_gain(-1, 1)
         self.assertLess(result, 0.5)
 
-        result = controllers.get_improvement(10, -1)
+        result = controllers.get_improvement_gain(10, -1)
         self.assertGreater(result, 1)
-        result = controllers.get_improvement(-1, 10)
+        result = controllers.get_improvement_gain(-1, 10)
         self.assertLess(result, 0.1)
 
     def test_get_control_mutated_returns_tuple(self):
