@@ -2,7 +2,7 @@ import os
 import tkinter.filedialog
 import tkinter.messagebox
 from abc import abstractmethod
-from typing import List, Callable
+from typing import List, Callable, Dict
 
 
 class Base:
@@ -19,31 +19,19 @@ class Widget(Base):
         self.can_update = False
         self.widget_var = tkinter.Variable()
 
-    def set_restore(self, value):
-        if not self.can_restore:
-            return
-        self.widget_var.set(value)
-
-    def get_restore(self):
-        if not self.can_restore:
-            return None
-        return self.widget_var.get()
-
-    def set_update(self, value):
-        if not self.can_update:
-            return
-        self.widget_var.set(value)
-
-    def get_update(self):
-        if not self.can_update:
-            return None
-        return self.widget_var.get()
-
     def get_value(self):
         return self.widget_var.get()
 
     def set_value(self, value):
         return self.widget_var.set(value)
+
+    def toggle_variable(self):
+        if type(self.widget_var) is not tkinter.Variable:
+            return
+        entry = self.widget
+        variable = tkinter.StringVar(entry)
+        entry.config(textvariable=variable)
+        self.widget_var = variable
 
 
 class Spacer(Base):
@@ -59,7 +47,7 @@ class Frame(Base):
         super().__init__(master, name)
         self.widget = tkinter.Frame(master)
         self.widget.pack(fill=tkinter.BOTH)
-        self.widgets = {}
+        self.widgets: Dict[str, Widget] = {}
 
     def get_widget(self, search) -> Widget:
         for id, widget in self.widgets.items():
@@ -94,6 +82,11 @@ class Frame(Base):
         self.add_widget('Button:' + name, button)
         return button
 
+    def add_spinbox(self, name):
+        spinbox = Spinbox(self.widget, name)
+        self.add_widget('Checkbox:' + name, spinbox)
+        return spinbox
+
     def add_checkbox(self, name):
         checkbox = Checkbox(self.widget, name)
         self.add_widget('Checkbox:' + name, checkbox)
@@ -108,20 +101,6 @@ class Label(Widget):
         label.pack(fill=tkinter.BOTH)
         self.widget = label
 
-    def toggle_variable(self):
-        entry = self.widget
-        variable = tkinter.StringVar(entry)
-        entry.config(textvariable=variable)
-        self.widget_var = variable
-
-    def toggle_update(self):
-        self.toggle_variable()
-        self.can_update = True
-
-    def toggle_restore(self):
-        self.toggle_variable()
-        self.can_restore = True
-
 
 class Entry(Widget):
     def __init__(self, master, text):
@@ -130,20 +109,6 @@ class Entry(Widget):
         entry.config(width=50)
         entry.pack(fill=tkinter.BOTH)
         self.widget = entry
-
-    def toggle_variable(self):
-        entry = self.widget
-        variable = tkinter.StringVar(entry)
-        entry.config(textvariable=variable)
-        self.widget_var = variable
-
-    def toggle_update(self):
-        self.toggle_variable()
-        self.can_update = True
-
-    def toggle_restore(self):
-        self.toggle_variable()
-        self.can_restore = True
 
 
 class Button(Widget):
@@ -158,12 +123,26 @@ class Button(Widget):
         self.widget.config(command=command)
 
 
+class Spinbox(Widget):
+    def __init__(self, master, name):
+        super().__init__(master, name)
+        widget = tkinter.Spinbox(master)
+        widget.pack(fill=tkinter.BOTH)
+        self.widget = widget
+
+    def increments(self, low, high, increment):
+        self.widget.config(from_=low, to=high, increment=increment)
+
+
 class Checkbox(Widget):
     def __init__(self, master, name):
         super().__init__(master, name)
         widget = tkinter.Checkbutton(master, text=name)
         widget.config(height=2, anchor=tkinter.W, padx=8)
         widget.pack(fill=tkinter.BOTH)
+        variable = tkinter.IntVar(widget, 0)
+        widget.config(variable=variable)
+        self.widget_var = variable
         self.widget = widget
 
 
@@ -175,7 +154,7 @@ class FileControl(Frame):
         self.add_button('Load', self.load)
         self.add_checkbox('Load on start')
         label = self.add_label('File name')
-        label.toggle_update()
+        label.toggle_variable()
         self.add_button('Select file', self.select)
 
     def save(self):
@@ -189,7 +168,77 @@ class FileControl(Frame):
         if filename == '':
             return
         widget = self.get_widget('File name')
-        widget.set_update(filename)
+        widget.set_value(filename)
+
+
+class OptionControl(Frame):
+    def __init__(self, master):
+        super().__init__(master, 'OptionControl')
+        self.info: Dict[str, any] = {}
+        self.add_label('Option Panel')
+        self.add_button('Refresh', self.option_refresh)
+        self.add_button('Update', self.option_update)
+
+    def info_update(self, info):
+        self.info.update(info)
+        self.option_refresh()
+
+    def option_create(self, name, value):
+        if type(value) is float:
+            self.add_label(name)
+            widget = self.add_spinbox(name)
+            widget.increments(value * -10, value * 10, value / 100)
+            widget.toggle_variable()
+            widget.set_value(value)
+        elif type(value) is int:
+            self.add_label(name)
+            widget = self.add_spinbox(name)
+            widget.increments(value * -10, value * 10, value // 10)
+            widget.toggle_variable()
+            widget.set_value(value)
+        elif type(value) is str:
+            self.add_label(name)
+            widget = self.add_entry(name)
+            widget.toggle_variable()
+            widget.set_value(value)
+        elif type(value) is bool:
+            self.add_label(name)
+            widget = self.add_checkbox(name)
+            widget.set_value(value)
+        elif type(value) in (dict, list):
+            raise NotImplementedError(name, value)
+        else:
+            raise NotImplementedError(name, value)
+
+    def option_refresh(self):
+        for key_info, value in self.info.items():
+            for id_widget, widget in self.widgets.items():
+                if widget.name != key_info:
+                    continue
+                if id_widget.find('Label') >= 0:
+                    continue
+                widget.set_value(value)
+                break
+            else:
+                self.option_create(key_info, value)
+
+    def option_update(self):
+        for id_widget, widget in self.widgets.items():
+            if widget.name not in self.info.keys():
+                continue
+            if id_widget.find('Label') >= 0:
+                continue
+            info, id, value = self.info, widget.name, widget.get_value()
+            if type(info[id]) is type(value):
+                info[id] = value
+            elif type(info[id]) is float:
+                info[id] = float(value)
+            elif type(info[id]) is int:
+                info[id] = int(value)
+            elif type(info[id]) is bool:
+                info[id] = bool(value)
+            else:
+                raise NotImplementedError(id, value)
 
 
 class ActionControl(Frame):
@@ -234,9 +283,12 @@ def select_file():
 
 
 def main():
+    import settings
+
     root = tkinter.Tk()
-    ActionControl(root)
-    FileControl(root)
+    ac = ActionControl(root)
+    op = OptionControl(root)
+    op.info_update(settings.get_dict())
     root.mainloop()
 
 
