@@ -3,7 +3,7 @@ import settings
 import controllers
 
 
-class Pendulum(controllers.EnvironmentController):
+class Pendulum(controllers.EnvironmentWorker):
     def get_reward(self, observation: gym.core.ObsType) -> float:
         # reward -= abs(observation[0] - 0.50)
         # reward += abs(observation[1] * 100)
@@ -59,16 +59,12 @@ learning_agent.add_controller(node_point)
 
 def main():
     env = gym.make('Pendulum-v1')
-    environment = controllers.EnvironmentRunner(env, learning_agent, Pendulum(env))
+    environment = controllers.EnvironmentManager(env, learning_agent, Pendulum(env))
 
-    environment.start()
-    while environment.running:
-        try:
-            environment.step_episode()
-            environment.step_end()
-        except KeyboardInterrupt:
-            break
-    environment.stop()
+    environment.run()
+    for i in range(len(learning_agent.controllers)):
+        learning_agent.select_controller(i)
+        print(learning_agent.selected.name, '=', learning_agent.get_string())
 
 
 if __name__ == '__main__':

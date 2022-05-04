@@ -5,7 +5,7 @@ import settings
 import controllers
 
 
-class CartPole(controllers.EnvironmentController):
+class CartPole(controllers.EnvironmentWorker):
     episode = 0
     progress = 0
     difficulty = 0
@@ -97,17 +97,10 @@ learner.add_controller(node_point)
 
 def main():
     env = gym.make('CartPole-v1')
-    environment = controllers.EnvironmentRunner(env, learner, CartPole(env))
+    environment = controllers.EnvironmentManager(env, learner, CartPole(env))
     # environment.controller.episode = environment.episode = Settings.EPISODE_CAP // 10 * 7
 
-    environment.start()
-    while environment.running:
-        try:
-            environment.step_episode()
-            environment.step_end()
-        except KeyboardInterrupt:
-            break
-    environment.stop()
+    environment.run()
     for i in range(len(learner.controllers)):
         learner.select_controller(i)
         print(learner.selected.name, '=', learner.get_string())

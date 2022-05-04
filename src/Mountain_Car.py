@@ -3,7 +3,7 @@ import controllers
 import settings
 
 
-class MountainCar(controllers.EnvironmentController):
+class MountainCar(controllers.EnvironmentWorker):
     position = 0.6
 
     def get_action(self, observation: gym.core.ObsType) -> gym.core.ActType:
@@ -67,16 +67,9 @@ learner.add_controller(node_point)
 
 def main():
     env = gym.make('MountainCar-v0')
-    environment = controllers.EnvironmentRunner(env, learner, MountainCar(env))
+    environment = controllers.EnvironmentManager(env, learner, MountainCar(env))
 
-    environment.start()
-    while environment.running:
-        try:
-            environment.step_episode()
-            environment.step_end()
-        except KeyboardInterrupt:
-            break
-    environment.stop()
+    environment.run()
     for i in range(len(learner.controllers)):
         learner.select_controller(i)
         print(learner.selected.name, '=', learner.get_string())
