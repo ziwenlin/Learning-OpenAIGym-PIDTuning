@@ -1,4 +1,4 @@
-import abc
+import time
 import textwrap
 from abc import ABC, abstractmethod
 from typing import List
@@ -7,6 +7,9 @@ import gym
 import numpy as np
 
 import settings
+
+THRESHOLD_MIN = 0.8
+THRESHOLD_RND = 1.0 - THRESHOLD_MIN
 
 
 class InOutController:
@@ -170,7 +173,7 @@ class ImprovingInOutController(InOutController, ImprovingController, ABC):
             self.is_improving, current_rewards, previous_rewards)
         avg, low, high = is_improving
 
-        if avg or low and high:
+        if low and avg or low and high or avg and high:
             # When the newer control has scored an equal or better score
             # Overwrite the previous reward and control
             self.previous_rewards = current_rewards
@@ -341,6 +344,7 @@ class EnvironmentRunner:
 
         self.learner = learner
 
+        self.fps_timer = time.time()
         self.episode = 1
         self.running = False
         self.rewards = 0
@@ -356,7 +360,9 @@ class EnvironmentRunner:
 
     def step_episode(self):
         episode = self.episode
-        if episode % settings.EPISODE_RENDER == 0:
+        frame_time = time.time()
+        if frame_time > self.fps_timer:
+            self.fps_timer = frame_time + 0.2
             self.env.render()
         observation = self.env.reset()
         self.controller.reset()
@@ -452,10 +458,10 @@ def get_is_improvement(bypass, new_values, old_values, func, threshold):
 
 def get_is_improving_random(improvements, new_values, old_values):
     avg, low, high = improvements
-    fail_chance = np.random.rand() * settings.EPSILON_DISCOUNT
-    low = get_is_improvement(low, new_values, old_values, min, fail_chance)
-    high = get_is_improvement(high, new_values, old_values, max, fail_chance)
-    avg = get_is_improvement(avg, new_values, old_values, sum, fail_chance)
+    threshold = THRESHOLD_MIN + THRESHOLD_RND * np.random.rand()
+    low = get_is_improvement(low, new_values, old_values, min, threshold)
+    high = get_is_improvement(high, new_values, old_values, max, threshold)
+    avg = get_is_improvement(avg, new_values, old_values, sum, threshold)
     return avg, low, high
 
 
