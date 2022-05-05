@@ -8,7 +8,6 @@ import controllers
 class CartPole(controllers.EnvironmentWorker):
     episode = 0
     progress = 0
-    difficulty = 0
     position = 0.0
 
     def reset(self, seed=None):

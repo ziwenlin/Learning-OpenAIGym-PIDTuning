@@ -6,6 +6,7 @@ from typing import List
 
 import gym
 import numpy as np
+from tabulate import tabulate
 
 import settings
 
@@ -299,20 +300,21 @@ class EnvironmentMonitor:
         self.results: List[dict[str, any]] = []
 
     def get_log(self, n=-1):
-        episode = self.results[n]['ep']
-        average = self.results[n]['reward']['average']
-        maximum = self.results[n]['reward']['highest']
-        minimum = self.results[n]['reward']['lowest']
-        epsilon = self.results[n]['epsilon']
-        multiplier = self.results[n]['multiplier']
-        text = f'''
-        Episode {episode}
-        Last {settings.EPISODE_LEARN} average rewards: {average:.3f}
-        Highest reward: {maximum:.3f}
-        Lowest reward: {minimum:.3f}
-        Epsilon: {epsilon:.3f}
-        Multiplier: {multiplier:.3f}
-        '''
+        result = self.results[n]
+        text = '\n'
+
+        simple_info = {a: [b] for a, b in result.items()
+                       if type(b) is not dict}
+        text += tabulate(simple_info, headers='keys',
+                         tablefmt='github') + '\n\n'
+
+        header_info = ['category'] + list(result['episode'].keys())
+        other_info = [[c] + list(item.values())
+                      for c, item in result.items()
+                      if type(item) is dict]
+        text += tabulate(other_info, headers=header_info,
+                         tablefmt='github') + '\n'
+
         return textwrap.dedent(text)
 
     def monitor(self, reward):
@@ -324,7 +326,12 @@ class EnvironmentMonitor:
         results = {}
         self.results.append(results)
 
-        results['ep'] = episode
+        results['division'] = episode
+        results['average'] = None
+        results['median'] = None
+        results['middle'] = None
+        results['lowest'] = None
+        results['highest'] = None
         results['epsilon'] = settings.EPSILON
         results['multiplier'] = settings.MULTIPLIER_EPSILON
 
@@ -365,6 +372,13 @@ class EnvironmentMonitor:
             'lowest': ep_sorted[0]['episode'],
             'highest': ep_sorted[-1]['episode'],
         }
+        for k, i in results['episode'].items():
+            results['episode'][k] = (i - 1) % len(ep_sorted) + 1
+        results['average'] = mean_value
+        results['median'] = median_value
+        results['middle'] = middle_value
+        results['lowest'] = ep_sorted[0]['reward']
+        results['highest'] = ep_sorted[-1]['reward']
 
 
 class EnvironmentManager:
