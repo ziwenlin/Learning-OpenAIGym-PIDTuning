@@ -295,6 +295,83 @@ class TestRotatingImprovingController(BaseTest.ImprovingController,
         self.assertTrue(self.controller.is_next)
 
 
+class TestEnvironmentMonitor(TestCase):
+    def setUp(self) -> None:
+        self.monitor = controllers.EnvironmentMonitor()
+        self.monitor.monitor({'reward': 10, 'difficulty': 0.3, 'episode': 1})
+        self.monitor.monitor({'reward': 12, 'difficulty': 0.2, 'episode': 2})
+        self.monitor.monitor({'reward': 8, 'difficulty': 0.4, 'episode': 3})
+
+    def test_monitor_rewards(self):
+        self.monitor.monitor({'reward': 10, 'difficulty': 0, 'episode': 1})
+        self.monitor.monitor({'reward': 12, 'difficulty': 0, 'episode': 8})
+        self.assertEqual(8, self.monitor.ep_buffer[4]['episode'])
+
+    def test_process_clear_buffer(self):
+        self.assertEqual(3, len(self.monitor.ep_buffer))
+        self.monitor.process(3)
+        self.assertEqual(0, len(self.monitor.ep_buffer))
+
+    def test_process_nothing(self):
+        monitor = controllers.EnvironmentMonitor()
+        with self.assertRaises(IndexError):
+            monitor.process(0)
+
+    def test_process_result_ep(self):
+        self.monitor.process(3)
+        self.assertEqual(3, self.monitor.results[0]['ep'])
+
+
+class TestEnvironmentMonitorResults(TestCase):
+    def setUp(self) -> None:
+        self.monitor = controllers.EnvironmentMonitor()
+        self.monitor.monitor({'reward': 10, 'difficulty': 0.3, 'episode': 1})
+        self.monitor.monitor({'reward': 12, 'difficulty': 0.4, 'episode': 2})
+        self.monitor.monitor({'reward': 8, 'difficulty': 0.4, 'episode': 3})
+        self.monitor.monitor({'reward': 10, 'difficulty': 0.3, 'episode': 4})
+        self.monitor.monitor({'reward': 12, 'difficulty': 0.2, 'episode': 5})
+        self.monitor.monitor({'reward': 8, 'difficulty': 0.4, 'episode': 6})
+        self.monitor.monitor({'reward': 16, 'difficulty': 0.1, 'episode': 7})
+        self.monitor.monitor({'reward': 20, 'difficulty': 0.1, 'episode': 8})
+        self.monitor.monitor({'reward': 14, 'difficulty': 0.2, 'episode': 9})
+        self.monitor.monitor({'reward': 24, 'difficulty': 0.0, 'episode': 10})
+
+    def test_process_results_highest(self):
+        self.monitor.process(10)
+        result = self.monitor.results[0]
+        self.assertEqual(24, result['reward']['highest'])
+        self.assertEqual(0.0, result['difficulty']['highest'])
+        self.assertEqual(10, result['episode']['highest'])
+
+    def test_process_results_lowest(self):
+        self.monitor.process(10)
+        result = self.monitor.results[0]
+        self.assertEqual(8, result['reward']['lowest'])
+        self.assertEqual(0.4, result['difficulty']['lowest'])
+        self.assertEqual(3, result['episode']['lowest'])
+
+    def test_process_results_median(self):
+        self.monitor.process(10)
+        result = self.monitor.results[0]
+        self.assertEqual(12, result['reward']['median'])
+        self.assertEqual(0.4, result['difficulty']['median'])
+        self.assertEqual(2, result['episode']['median'])
+
+    def test_process_results_middle(self):
+        self.monitor.process(10)
+        result = self.monitor.results[0]
+        self.assertEqual(16, result['reward']['middle'])
+        self.assertEqual(0.1, result['difficulty']['middle'])
+        self.assertEqual(7, result['episode']['middle'])
+
+    def test_process_results_mean(self):
+        self.monitor.process(10)
+        result = self.monitor.results[0]
+        self.assertEqual(14, result['reward']['average'])
+        self.assertEqual(0.2, result['difficulty']['average'])
+        self.assertEqual(9, result['episode']['average'])
+
+
 class Test(TestCase):
     def test_get_improvement_positive_not_zero(self):
         result = controllers.get_improvement_gain(10, 1)
@@ -430,7 +507,7 @@ class Test(TestCase):
     def test_get_control_mutated_improvement_is_different(self):
         result = controllers.get_control_mutated((0, 0), (0, 0))
         if result[0] == 0:
-            self.assertNotEqual(0, result[1])
+            self.assertNotEqual(0.0, result[1])
         else:
             self.assertNotEqual(0, result[0])
             self.assertEqual(0, result[1])

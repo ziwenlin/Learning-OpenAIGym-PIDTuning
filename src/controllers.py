@@ -1,3 +1,4 @@
+import statistics
 import time
 import textwrap
 from abc import ABC, abstractmethod
@@ -63,10 +64,11 @@ class LearningController:
 class EnvironmentWorker:
     def __init__(self, env: gym.Env):
         self.action_space = env.action_space
+        self.difficulty = 0
 
     @abstractmethod
     def reset(self):
-        pass
+        self.difficulty = 0
 
     @abstractmethod
     def get_action(self, observation: gym.core.ObsType) -> gym.core.ActType:
@@ -293,22 +295,16 @@ class RotatingImprovingController(ImprovingController, RotatingController):
 
 class EnvironmentMonitor:
     def __init__(self):
-        self.rewards = []
-
-        self.episodes = []
-        self.averages = []
-        self.maximums = []
-        self.minimums = []
-        self.epsilons = []
-        self.multipliers = []
+        self.ep_buffer: List[dict] = []
+        self.results: List[dict[str, any]] = []
 
     def get_log(self, n=-1):
-        episode = self.episodes[n]
-        average = self.averages[n]
-        maximum = self.maximums[n]
-        minimum = self.minimums[n]
-        epsilon = self.epsilons[n]
-        multiplier = self.multipliers[n]
+        episode = self.results[n]['ep']
+        average = self.results[n]['reward']['average']
+        maximum = self.results[n]['reward']['highest']
+        minimum = self.results[n]['reward']['lowest']
+        epsilon = self.results[n]['epsilon']
+        multiplier = self.results[n]['multiplier']
         text = f'''
         Episode {episode}
         Last {settings.EPISODE_LEARN} average rewards: {average:.3f}
@@ -320,17 +316,55 @@ class EnvironmentMonitor:
         return textwrap.dedent(text)
 
     def monitor(self, reward):
-        self.rewards.append(reward)
+        self.ep_buffer.append(reward)
 
     def process(self, episode):
-        self.epsilons.append(settings.EPSILON)
-        self.multipliers.append(settings.MULTIPLIER_EPSILON)
-        self.episodes.append(episode)
-        rewards = self.rewards
-        self.averages.append(sum(rewards) / len(rewards))
-        self.maximums.append(max(rewards))
-        self.minimums.append(min(rewards))
-        self.rewards.clear()
+        if len(self.ep_buffer) == 0:
+            raise IndexError
+        results = {}
+        self.results.append(results)
+
+        results['ep'] = episode
+        results['epsilon'] = settings.EPSILON
+        results['multiplier'] = settings.MULTIPLIER_EPSILON
+
+        ep_sorted = sorted(self.ep_buffer, key=lambda ep: ep['reward'])
+        self.ep_buffer.clear()
+        ep_reward = [ep['reward'] for ep in ep_sorted]
+
+        median_value = statistics.median(ep_reward)
+        median_ep = min(ep_sorted, key=lambda x: abs(x['reward'] - median_value))
+        median = ep_sorted.index(median_ep)
+
+        middle_value = (ep_reward[0] + ep_reward[-1]) / 2
+        middle_ep = min(ep_sorted, key=lambda x: abs(x['reward'] - middle_value))
+        middle = ep_sorted.index(middle_ep)
+
+        mean_value = statistics.mean(ep_reward)
+        mean_ep = min(ep_sorted, key=lambda x: abs(x['reward'] - mean_value))
+        mean = ep_sorted.index(mean_ep)
+
+        results['reward'] = {
+            'average': ep_sorted[mean]['reward'],
+            'median': ep_sorted[median]['reward'],
+            'middle': ep_sorted[middle]['reward'],
+            'lowest': ep_sorted[0]['reward'],
+            'highest': ep_sorted[-1]['reward'],
+        }
+        results['difficulty'] = {
+            'average': ep_sorted[mean]['difficulty'],
+            'median': ep_sorted[median]['difficulty'],
+            'middle': ep_sorted[middle]['difficulty'],
+            'lowest': ep_sorted[0]['difficulty'],
+            'highest': ep_sorted[-1]['difficulty'],
+        }
+        results['episode'] = {
+            'average': ep_sorted[mean]['episode'],
+            'median': ep_sorted[median]['episode'],
+            'middle': ep_sorted[middle]['episode'],
+            'lowest': ep_sorted[0]['episode'],
+            'highest': ep_sorted[-1]['episode'],
+        }
 
 
 class EnvironmentManager:
@@ -387,7 +421,11 @@ class EnvironmentManager:
         episode = self.episode
 
         self.agent.reward(self.rewards)
-        self.logger.monitor(self.rewards)
+        self.logger.monitor({
+            'episode': episode,
+            'reward': self.rewards,
+            'difficulty': self.worker.difficulty,
+        })
         self.rewards = 0
 
         if episode % settings.EPISODE_LEARN == 0:
