@@ -333,45 +333,49 @@ class EnvironmentMonitor:
 
         division = sorted(self.buffer, key=lambda ep: ep['reward'])
         self.buffer.clear()
-        div_rewards = [ep['reward'] for ep in division]
+        division_rewards = [ep['reward'] for ep in division]
 
-        def get_index(value):
-            item = min(division, key=lambda x: abs(x['reward'] - value))
-            return division.index(item)
+        lowest_i, highest_i = 0, -1
+        lowest_value = division_rewards[lowest_i]
+        highest_value = division_rewards[highest_i]
 
-        median_value = statistics.median(div_rewards)
-        median_i = get_index(median_value)
+        def get_index_closest(value):
+            item = min(division_rewards, key=lambda x: abs(x - value))
+            return division_rewards.index(item)
 
-        middle_value = (div_rewards[0] + div_rewards[-1]) / 2
-        middle_i = get_index(middle_value)
+        median_value = statistics.median(division_rewards)
+        median_i = get_index_closest(median_value)
 
-        mean_value = statistics.mean(div_rewards)
-        mean_i = get_index(mean_value)
+        middle_value = (lowest_value + highest_value) / 2
+        middle_i = get_index_closest(middle_value)
 
-        def get_result(division, category):
-            return {
-                'highest': division[-1][category],
+        mean_value = statistics.mean(division_rewards)
+        mean_i = get_index_closest(mean_value)
+
+        def get_result(category):
+            result[category] = {
+                'highest': division[highest_i][category],
                 'average': division[mean_i][category],
-                'lowest': division[0][category],
+                'lowest': division[lowest_i][category],
                 'median': division[median_i][category],
                 'middle': division[middle_i][category],
             }
+            if category == 'episode':
+                for k, value in result['episode'].items():
+                    result['episode'][k] = (value - 1) % len(division) + 1
+                return
+            for k, value in result[category].items():
+                result[category][k] = round(value, 2)
 
-        result['reward'] = get_result(division, 'reward')
-        for k, i in result['reward'].items():
-            result['reward'][k] = round(i, 2)
-        result['difficulty'] = get_result(division, 'difficulty')
-        for k, i in result['difficulty'].items():
-            result['difficulty'][k] = round(i, 2)
-        result['episode'] = get_result(division, 'episode')
-        for k, i in result['episode'].items():
-            result['episode'][k] = (i - 1) % len(division) + 1
+        get_result('reward')
+        get_result('difficulty')
+        get_result('episode')
 
         result['average'] = round(mean_value, 2)
         result['median'] = round(median_value, 2)
         result['middle'] = round(middle_value, 2)
-        result['lowest'] = round(division[0]['reward'], 2)
-        result['highest'] = round(division[-1]['reward'], 2)
+        result['lowest'] = round(lowest_value, 2)
+        result['highest'] = round(highest_value, 2)
 
 
 class EnvironmentManager:
