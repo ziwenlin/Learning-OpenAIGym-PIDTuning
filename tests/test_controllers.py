@@ -305,12 +305,12 @@ class TestEnvironmentMonitor(TestCase):
     def test_monitor_rewards(self):
         self.monitor.monitor({'reward': 10, 'difficulty': 0, 'episode': 1})
         self.monitor.monitor({'reward': 12, 'difficulty': 0, 'episode': 8})
-        self.assertEqual(8, self.monitor.ep_buffer[4]['episode'])
+        self.assertEqual(8, self.monitor.buffer[4]['episode'])
 
     def test_process_clear_buffer(self):
-        self.assertEqual(3, len(self.monitor.ep_buffer))
+        self.assertEqual(3, len(self.monitor.buffer))
         self.monitor.process(3)
-        self.assertEqual(0, len(self.monitor.ep_buffer))
+        self.assertEqual(0, len(self.monitor.buffer))
 
     def test_process_nothing(self):
         monitor = controllers.EnvironmentMonitor()
@@ -334,15 +334,15 @@ class TestEnvironmentMonitor(TestCase):
     def test_get_log_output(self):
         self.monitor.process(3)
         test = """
-|   division |   average |   median |   middle |   lowest |   highest |   epsilon |   multiplier |
-|------------|-----------|----------|----------|----------|-----------|-----------|--------------|
-|          3 |        10 |       10 |       10 |        8 |        12 |       0.9 |           10 |
+|   division |   highest |   average |   lowest |   median |   middle |   epsilon |   multiplier |
+|------------|-----------|-----------|----------|----------|----------|-----------|--------------|
+|          3 |        12 |        10 |        8 |       10 |       10 |       0.9 |           10 |
 
-| category   |   average |   median |   middle |   lowest |   highest |
-|------------|-----------|----------|----------|----------|-----------|
-| reward     |      10   |     10   |     10   |      8   |      12   |
-| difficulty |       0.3 |      0.3 |      0.3 |      0.4 |       0.2 |
-| episode    |       1   |      1   |      1   |      3   |       2   |
+| category   |   highest |   average |   lowest |   median |   middle |
+|------------|-----------|-----------|----------|----------|----------|
+| reward     |      12   |      10   |      8   |     10   |     10   |
+| difficulty |       0.2 |       0.3 |      0.4 |      0.3 |      0.3 |
+| episode    |       2   |       1   |      3   |      1   |      1   |
 """
         compare = self.monitor.get_log()
         self.assertEqual(test, compare)

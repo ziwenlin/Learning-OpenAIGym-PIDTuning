@@ -295,7 +295,7 @@ class RotatingImprovingController(ImprovingController, RotatingController):
 
 class EnvironmentMonitor:
     def __init__(self):
-        self.ep_buffer: list[dict] = []
+        self.buffer: list[dict] = []
         self.results: list[dict[str, any]] = []
 
     def get_log(self, n=-1):
@@ -317,71 +317,64 @@ class EnvironmentMonitor:
         return textwrap.dedent(text)
 
     def monitor(self, reward):
-        self.ep_buffer.append(reward)
+        self.buffer.append(reward)
 
     def process(self, episode):
-        if len(self.ep_buffer) == 0:
+        if len(self.buffer) == 0:
             raise IndexError
         result: dict[str, float | dict[str, float | int]] = {}
         self.results.append(result)
 
         result['division'] = episode
         result['highest'] = 0
-        result['lowest'] = 0
         result['average'] = 0
-        result['middle'] = 0
+        result['lowest'] = 0
         result['median'] = 0
+        result['middle'] = 0
         result['epsilon'] = settings.EPSILON
         result['multiplier'] = settings.MULTIPLIER_EPSILON
 
-        ep_sorted = sorted(self.ep_buffer, key=lambda ep: ep['reward'])
-        self.ep_buffer.clear()
-        ep_reward = [ep['reward'] for ep in ep_sorted]
+        division = sorted(self.buffer, key=lambda ep: ep['reward'])
+        self.buffer.clear()
+        div_rewards = [ep['reward'] for ep in division]
 
-        median_value = statistics.median(ep_reward)
-        median_ep = min(ep_sorted, key=lambda x: abs(x['reward'] - median_value))
-        median = ep_sorted.index(median_ep)
+        def get_index(value):
+            item = min(division, key=lambda x: abs(x['reward'] - value))
+            return division.index(item)
 
-        middle_value = (ep_reward[0] + ep_reward[-1]) / 2
-        middle_ep = min(ep_sorted, key=lambda x: abs(x['reward'] - middle_value))
-        middle = ep_sorted.index(middle_ep)
+        median_value = statistics.median(div_rewards)
+        median_i = get_index(median_value)
 
-        mean_value = statistics.mean(ep_reward)
-        mean_ep = min(ep_sorted, key=lambda x: abs(x['reward'] - mean_value))
-        mean = ep_sorted.index(mean_ep)
+        middle_value = (div_rewards[0] + div_rewards[-1]) / 2
+        middle_i = get_index(middle_value)
 
-        result['reward'] = {
-            'average': ep_sorted[mean]['reward'],
-            'median': ep_sorted[median]['reward'],
-            'middle': ep_sorted[middle]['reward'],
-            'lowest': ep_sorted[0]['reward'],
-            'highest': ep_sorted[-1]['reward'],
-        }
+        mean_value = statistics.mean(div_rewards)
+        mean_i = get_index(mean_value)
+
+        def get_result(division, category):
+            return {
+                'highest': division[-1][category],
+                'average': division[mean_i][category],
+                'lowest': division[0][category],
+                'median': division[median_i][category],
+                'middle': division[middle_i][category],
+            }
+
+        result['reward'] = get_result(division, 'reward')
         for k, i in result['reward'].items():
-            result['reward'][k] = float('{:.2f}'.format(i))
-        result['difficulty'] = {
-            'average': ep_sorted[mean]['difficulty'],
-            'median': ep_sorted[median]['difficulty'],
-            'middle': ep_sorted[middle]['difficulty'],
-            'lowest': ep_sorted[0]['difficulty'],
-            'highest': ep_sorted[-1]['difficulty'],
-        }
+            result['reward'][k] = round(i, 2)
+        result['difficulty'] = get_result(division, 'difficulty')
         for k, i in result['difficulty'].items():
-            result['difficulty'][k] = float('{:.2f}'.format(i))
-        result['episode'] = {
-            'average': ep_sorted[mean]['episode'],
-            'median': ep_sorted[median]['episode'],
-            'middle': ep_sorted[middle]['episode'],
-            'lowest': ep_sorted[0]['episode'],
-            'highest': ep_sorted[-1]['episode'],
-        }
+            result['difficulty'][k] = round(i, 2)
+        result['episode'] = get_result(division, 'episode')
         for k, i in result['episode'].items():
-            result['episode'][k] = int((i - 1) % len(ep_sorted) + 1)
-        result['average'] = mean_value
-        result['median'] = median_value
-        result['middle'] = middle_value
-        result['lowest'] = ep_sorted[0]['reward']
-        result['highest'] = ep_sorted[-1]['reward']
+            result['episode'][k] = (i - 1) % len(division) + 1
+
+        result['average'] = round(mean_value, 2)
+        result['median'] = round(median_value, 2)
+        result['middle'] = round(middle_value, 2)
+        result['lowest'] = round(division[0]['reward'], 2)
+        result['highest'] = round(division[-1]['reward'], 2)
 
 
 class EnvironmentManager:
