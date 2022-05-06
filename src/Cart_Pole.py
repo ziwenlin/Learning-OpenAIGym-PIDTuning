@@ -6,9 +6,11 @@ import controllers
 
 
 class CartPole(controllers.EnvironmentWorker):
-    episode = 0
-    progress = 0
-    position = 0.0
+    def __init__(self, env: gym.Env):
+        super().__init__(env)
+        self.episode = 0
+        self.progress = 0
+        self.position = 0.0
 
     def reset(self, seed=None):
         if seed is not None:
@@ -16,8 +18,10 @@ class CartPole(controllers.EnvironmentWorker):
         self.episode += 1
         episode = self.episode
         intervals = settings.EPISODE_LEARN
-        self.progress = (episode % intervals * intervals) // settings.EPISODE_CAP
-        self.difficulty = self.progress * numpy.random.rand()
+        progress = (episode // intervals) * intervals
+        unluck = numpy.random.random() * 2 - 1
+        self.progress = progress / settings.EPISODE_CAP
+        self.difficulty = self.progress * unluck
         self.position = 2 * self.difficulty
 
     def get_action(self, observation: gym.core.ObsType) -> gym.core.ActType:
