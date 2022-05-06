@@ -319,7 +319,33 @@ class TestEnvironmentMonitor(TestCase):
 
     def test_process_result_ep(self):
         self.monitor.process(3)
-        self.assertEqual(3, self.monitor.results[0]['ep'])
+        result = self.monitor.results[0]
+        self.assertEqual(3, result['division'])
+
+    def test_process_result_episode_is_int(self):
+        self.monitor.process(3)
+        result = self.monitor.results[0]
+        self.assertIsInstance(result['episode']['average'], int)
+        other_info = [[c] + list(item.values())
+                      for c, item in result.items()
+                      if type(item) is dict]
+        self.assertIsInstance(other_info[2][2], int)
+
+    def test_get_log_output(self):
+        self.monitor.process(3)
+        test = """
+|   division |   average |   median |   middle |   lowest |   highest |   epsilon |   multiplier |
+|------------|-----------|----------|----------|----------|-----------|-----------|--------------|
+|          3 |        10 |       10 |       10 |        8 |        12 |       0.9 |           10 |
+
+| category   |   average |   median |   middle |   lowest |   highest |
+|------------|-----------|----------|----------|----------|-----------|
+| reward     |      10   |     10   |     10   |      8   |      12   |
+| difficulty |       0.3 |      0.3 |      0.3 |      0.4 |       0.2 |
+| episode    |       1   |      1   |      1   |      3   |       2   |
+"""
+        compare = self.monitor.get_log()
+        self.assertEqual(test, compare)
 
 
 class TestEnvironmentMonitorResults(TestCase):

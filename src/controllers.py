@@ -1,8 +1,7 @@
 import statistics
-import time
 import textwrap
+import time
 from abc import ABC, abstractmethod
-from typing import List
 
 import gym
 import numpy as np
@@ -212,7 +211,7 @@ class ImprovingNodeController(ImprovingInOutController, NodeController):
 
 class RotatingController:
     def __init__(self):
-        self.controllers: List[LearningController] = []
+        self.controllers: list[LearningController] = []
         self.selected = LearningController()
         self.index = 0
 
@@ -296,8 +295,8 @@ class RotatingImprovingController(ImprovingController, RotatingController):
 
 class EnvironmentMonitor:
     def __init__(self):
-        self.ep_buffer: List[dict] = []
-        self.results: List[dict[str, any]] = []
+        self.ep_buffer: list[dict] = []
+        self.results: list[dict[str, any]] = []
 
     def get_log(self, n=-1):
         result = self.results[n]
@@ -323,17 +322,17 @@ class EnvironmentMonitor:
     def process(self, episode):
         if len(self.ep_buffer) == 0:
             raise IndexError
-        results = {}
-        self.results.append(results)
+        result: dict[str, float | dict[str, float | int]] = {}
+        self.results.append(result)
 
-        results['division'] = episode
-        results['average'] = None
-        results['median'] = None
-        results['middle'] = None
-        results['lowest'] = None
-        results['highest'] = None
-        results['epsilon'] = settings.EPSILON
-        results['multiplier'] = settings.MULTIPLIER_EPSILON
+        result['division'] = episode
+        result['highest'] = 0
+        result['lowest'] = 0
+        result['average'] = 0
+        result['middle'] = 0
+        result['median'] = 0
+        result['epsilon'] = settings.EPSILON
+        result['multiplier'] = settings.MULTIPLIER_EPSILON
 
         ep_sorted = sorted(self.ep_buffer, key=lambda ep: ep['reward'])
         self.ep_buffer.clear()
@@ -351,34 +350,38 @@ class EnvironmentMonitor:
         mean_ep = min(ep_sorted, key=lambda x: abs(x['reward'] - mean_value))
         mean = ep_sorted.index(mean_ep)
 
-        results['reward'] = {
+        result['reward'] = {
             'average': ep_sorted[mean]['reward'],
             'median': ep_sorted[median]['reward'],
             'middle': ep_sorted[middle]['reward'],
             'lowest': ep_sorted[0]['reward'],
             'highest': ep_sorted[-1]['reward'],
         }
-        results['difficulty'] = {
+        for k, i in result['reward'].items():
+            result['reward'][k] = float('{:.2f}'.format(i))
+        result['difficulty'] = {
             'average': ep_sorted[mean]['difficulty'],
             'median': ep_sorted[median]['difficulty'],
             'middle': ep_sorted[middle]['difficulty'],
             'lowest': ep_sorted[0]['difficulty'],
             'highest': ep_sorted[-1]['difficulty'],
         }
-        results['episode'] = {
+        for k, i in result['difficulty'].items():
+            result['difficulty'][k] = float('{:.2f}'.format(i))
+        result['episode'] = {
             'average': ep_sorted[mean]['episode'],
             'median': ep_sorted[median]['episode'],
             'middle': ep_sorted[middle]['episode'],
             'lowest': ep_sorted[0]['episode'],
             'highest': ep_sorted[-1]['episode'],
         }
-        for k, i in results['episode'].items():
-            results['episode'][k] = (i - 1) % len(ep_sorted) + 1
-        results['average'] = mean_value
-        results['median'] = median_value
-        results['middle'] = middle_value
-        results['lowest'] = ep_sorted[0]['reward']
-        results['highest'] = ep_sorted[-1]['reward']
+        for k, i in result['episode'].items():
+            result['episode'][k] = int((i - 1) % len(ep_sorted) + 1)
+        result['average'] = mean_value
+        result['median'] = median_value
+        result['middle'] = middle_value
+        result['lowest'] = ep_sorted[0]['reward']
+        result['highest'] = ep_sorted[-1]['reward']
 
 
 class EnvironmentManager:
