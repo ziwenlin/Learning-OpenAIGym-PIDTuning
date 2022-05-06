@@ -17,6 +17,15 @@ MULTIPLIER_EPSILON = 10
 MULTIPLIER_IMPROVE = 0.2
 MULTIPLIER_RAND = 0.1
 
+THRESHOLD_MIN = 0.8
+THRESHOLD_RND = 1.0 - THRESHOLD_MIN
+
+
+def recalculate_threshold(minimum):
+    global THRESHOLD_MIN, THRESHOLD_RND
+    THRESHOLD_MIN = minimum
+    THRESHOLD_RND = 1.0 - THRESHOLD_MIN
+
 
 def recalculate(multiplier):
     global EPISODE_CAP, EPISODE_SHOW, EPISODE_PRINT, EPSILON_DECAY_RATE
@@ -54,4 +63,5 @@ def set_dict(info):
         if id in ['EPISODE_MULTIPLIER','EPSILON_DECAY_RATE',]:
             continue
         globals()[id] = value
+
 

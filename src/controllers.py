@@ -9,9 +9,6 @@ from tabulate import tabulate
 
 import settings
 
-THRESHOLD_MIN = 0.8
-THRESHOLD_RND = 1.0 - THRESHOLD_MIN
-
 
 class InOutController:
     @abstractmethod
@@ -515,7 +512,8 @@ def get_is_improvement(bypass, new_values, old_values, func, threshold):
 
 def get_is_improving_random(improvements, new_values, old_values):
     avg, low, high = improvements
-    threshold = THRESHOLD_MIN + THRESHOLD_RND * np.random.rand()
+    threshold = settings.THRESHOLD_MIN
+    threshold += settings.THRESHOLD_RND * np.random.rand()
     low = get_is_improvement(low, new_values, old_values, min, threshold)
     high = get_is_improvement(high, new_values, old_values, max, threshold)
     avg = get_is_improvement(avg, new_values, old_values, sum, threshold)
