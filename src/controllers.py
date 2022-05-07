@@ -8,6 +8,7 @@ import numpy as np
 from tabulate import tabulate
 
 import settings
+from mutations import mutate_io_controller
 
 
 class InOutController:
@@ -159,7 +160,7 @@ class ImprovingInOutController(InOutController, ImprovingController, ABC):
         return get_tuple_string(self.get_control())
 
     def explore(self):
-        self.current_control = get_control_mutated(
+        self.current_control = mutate_io_controller(
             self.current_control, self.previous_control)
         self.set_control(self.current_control)
 
@@ -193,8 +194,8 @@ class ImprovingPIDController(ImprovingInOutController, PIDController):
         PIDController.__init__(self, preset)
 
     def explore(self):
-        self.current_control = get_control_mutated(
-            self.current_control, self.previous_control, True)
+        self.current_control = mutate_io_controller(
+            self.current_control, self.previous_control, 'pid')
         self.set_control(self.current_control)
 
 
@@ -322,15 +323,6 @@ class EnvironmentMonitor:
         result: dict[str, float | dict[str, float | int]] = {}
         self.results.append(result)
 
-        result['division'] = episode
-        result['highest'] = 0
-        result['average'] = 0
-        result['lowest'] = 0
-        result['median'] = 0
-        result['middle'] = 0
-        result['epsilon'] = settings.EPSILON
-        result['multiplier'] = settings.MULTIPLIER_EPSILON
-
         division = sorted(self.buffer, key=lambda ep: ep['reward'])
         self.buffer.clear()
         division_rewards = [ep['reward'] for ep in division]
@@ -339,18 +331,14 @@ class EnvironmentMonitor:
         lowest_value = division_rewards[lowest_i]
         highest_value = division_rewards[highest_i]
 
-        def get_index_closest(value):
-            item = min(division_rewards, key=lambda x: abs(x - value))
-            return division_rewards.index(item)
-
         median_value = statistics.median(division_rewards)
-        median_i = get_index_closest(median_value)
+        median_i = get_index_closest(median_value, division_rewards)
 
         middle_value = (lowest_value + highest_value) / 2
-        middle_i = get_index_closest(middle_value)
+        middle_i = get_index_closest(middle_value, division_rewards)
 
         mean_value = statistics.mean(division_rewards)
-        mean_i = get_index_closest(mean_value)
+        mean_i = get_index_closest(mean_value, division_rewards)
 
         def get_result(category):
             result[category] = {
@@ -371,11 +359,14 @@ class EnvironmentMonitor:
         get_result('difficulty')
         get_result('episode')
 
+        result['division'] = episode
+        result['highest'] = round(highest_value, 2)
         result['average'] = round(mean_value, 2)
+        result['lowest'] = round(lowest_value, 2)
         result['median'] = round(median_value, 2)
         result['middle'] = round(middle_value, 2)
-        result['lowest'] = round(lowest_value, 2)
-        result['highest'] = round(highest_value, 2)
+        result['epsilon'] = settings.EPSILON
+        result['multiplier'] = settings.MULTIPLIER_EPSILON
 
 
 class EnvironmentManager:
@@ -535,65 +526,47 @@ def get_is_improving(new_values, old_values):
     return a, b, c
 
 
-def get_control_mutated(new_control, previous_control, is_pid=False):
-    if type(new_control) is not list:
-        new_control = list(new_control)
-    current_index = get_index_changed(new_control, previous_control)
-    if np.random.rand() > settings.EPSILON:
-        # Improve the changed setting
-        get_control_improved_mutation(
-            new_control, previous_control, current_index)
-        return tuple(new_control)
-
-    # Random explore settings which has not been changed
-    random_index = get_index_random(len(new_control), current_index)
-    if is_pid:
-        multiplier = (5, 0.1, 2)[random_index]
-    else:
-        multiplier = 1
-    new_control[random_index] += get_mutation_random() * multiplier
-    return tuple(new_control)
-
-
-def get_control_improved_mutation(new_control, old_control, index):
-    # Mutate parameter that has been changed before
-    if type(new_control) is not list:
-        new_control = list(new_control)
-    improve = get_mutation_improved(new_control, old_control, index)
-    new_control[index] += improve
-    return tuple(new_control)
-
-
-def get_control_random_mutation(control, index=-1):
-    # Random mutate parameter at index
-    if type(control) is not list:
-        control = list(control)
-    if index == -1:
-        index = np.random.randint(len(control))
-    control[index] += get_mutation_random()
-    return tuple(control)
-
-
-def get_mutation_improved(new_control, old_control, index):
-    improve = settings.MULTIPLIER_IMPROVE * settings.MULTIPLIER_EPSILON
-    difference = (new_control[index] - old_control[index])
-    return difference * improve
-
-
-def get_mutation_random():
-    improve = settings.MULTIPLIER_RAND * settings.MULTIPLIER_EPSILON
-    return (np.random.rand() - 0.5) * improve
-
-
 def get_index_changed(tuple_a, tuple_b):
+    # get_index_difference
+    """
+    Compares two data sets and returns the index
+    when a difference has been found.
+
+    :param tuple or list tuple_a: Data set to compare
+    :param tuple or list tuple_b: Data set to compare
+    :return: Index of first difference, defaults to -1 if nothing has been found
+    :rtype: int
+    """
     for index in range(len(tuple_a)):
         if tuple_b[index] != tuple_a[index]:
             return index
     return -1
 
 
-def get_index_random(size, not_index=-1):
-    random_index = np.random.randint(size)
-    while random_index == not_index:
-        random_index = np.random.randint(size)
+def get_index_random(index_range, index_skip=-1):
+    """
+    Gets random index within a maximum range.
+    When index_skip is specified it will not return that number.
+
+    :param int index_range: Maximum value of the random index
+    :param int index_skip: Index that is not allowed to be picked
+    :return: Random index number
+    :rtype: int
+    """
+    random_index = np.random.randint(index_range)
+    while random_index == index_skip:
+        random_index = np.random.randint(index_range)
     return random_index
+
+
+def get_index_closest(value, data):
+    """
+    Returns the index of the closest value at the given value.
+
+    :param list or tuple data:
+    :param float or int value: Any value that has some
+    relation to the given list or tuple
+    :return: Index at closest value
+    """
+    item = min(data, key=lambda x: abs(x - value))
+    return data.index(item)

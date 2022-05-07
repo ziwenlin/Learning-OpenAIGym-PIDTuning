@@ -1,6 +1,7 @@
 from unittest import TestCase, mock
 
 import controllers
+import mutations
 
 NAME = 'TEST'
 PID = (10, 0.1, 2)
@@ -526,12 +527,14 @@ class Test(TestCase):
         result = controllers.get_improvement_gain(-1, 10)
         self.assertLess(result, 0.1)
 
+
+class TestMutations(TestCase):
     def test_get_control_mutated_returns_tuple(self):
-        result = controllers.get_control_mutated((0, 0), (0, 0))
+        result = mutations.mutate_io_controller((0, 0), (0, 0))
         self.assertEqual(tuple, type(result))
 
     def test_get_control_mutated_improvement_is_different(self):
-        result = controllers.get_control_mutated((0, 0), (0, 0))
+        result = mutations.mutate_io_controller((0, 0), (0, 0))
         if result[0] == 0:
             self.assertNotEqual(0.0, result[1])
         else:
