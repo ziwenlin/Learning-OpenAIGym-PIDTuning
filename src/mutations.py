@@ -18,7 +18,7 @@ def mutate_io_controller(current, previous, io_type=''):
     """
     if type(current) is not list:
         current = list(current)
-    current_index = controllers.get_index_changed(current, previous)
+    current_index = controllers.get_index_difference(current, previous)
 
     # Explore or improve, at the start it will explore more
     if numpy.random.rand() > settings.EPSILON:

@@ -48,23 +48,23 @@ pid_direct = controllers.ImprovingPIDController('PID_DIRECT', PID_DIRECT)
 node_point = controllers.ImprovingNodeController('NODE_POINT', NODE_POINT)
 node_pendulum = controllers.ImprovingNodeController('NODE_PENDULUM', NODE_PENDULUM)
 node_direct = controllers.ImprovingNodeController('NODE_DIRECT', NODE_DIRECT)
-learning_agent = controllers.RotatingImprovingController()
-learning_agent.add_controller(pid_direct)
-learning_agent.add_controller(pid_pendulum)
-learning_agent.add_controller(pid_point)
-learning_agent.add_controller(node_direct)
-learning_agent.add_controller(node_pendulum)
-learning_agent.add_controller(node_point)
+manager = controllers.ImprovingControllerManager()
+manager.add_controller(pid_direct)
+manager.add_controller(pid_pendulum)
+manager.add_controller(pid_point)
+manager.add_controller(node_direct)
+manager.add_controller(node_pendulum)
+manager.add_controller(node_point)
 
 
 def main():
     env = gym.make('Pendulum-v1')
-    environment = controllers.EnvironmentManager(env, learning_agent, Pendulum(env))
+    environment = controllers.EnvironmentManager(env, manager, Pendulum(env))
 
     environment.run()
-    for i in range(len(learning_agent.controllers)):
-        learning_agent.select_controller(i)
-        print(learning_agent.selected.name, '=', learning_agent.get_string())
+    for i in range(manager.get_size()):
+        manager.select_controller(i)
+        print(manager.name, '=', manager.get_string())
 
 
 if __name__ == '__main__':

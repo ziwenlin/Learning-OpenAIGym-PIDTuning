@@ -22,10 +22,10 @@ class MountainCar(controllers.EnvironmentWorker):
     def get_reward(self, observation: gym.core.ObsType) -> float:
         reward = 0
         position, speed = observation
-        if learner.name in ('PID_CART'):
+        if manager.name in ('PID_CART'):
             reward += abs(speed) ** 0.5
             reward += abs(position - 0.5) ** 0.5
-        elif learner.name in ('PID_POINT', 'NODE_POINT', 'NODE_CART'):
+        elif manager.name in ('PID_POINT', 'NODE_POINT', 'NODE_CART'):
             reward += abs(speed) ** 0.5
             reward -= abs(position - 0.5) ** 0.5
         # reward -= abs(observation[0] - 0.50)
@@ -58,21 +58,21 @@ pid_cart = controllers.ImprovingPIDController('PID_CART', PID_CART)
 pid_point = controllers.ImprovingPIDController('PID_POINT', PID_POINT)
 node_cart = controllers.ImprovingNodeController('NODE_CART', NODE_CART)
 node_point = controllers.ImprovingNodeController('NODE_POINT', NODE_POINT)
-learner = controllers.RotatingImprovingController()
-learner.add_controller(pid_cart)
-learner.add_controller(pid_point)
-learner.add_controller(node_cart)
-learner.add_controller(node_point)
+manager = controllers.ImprovingControllerManager()
+manager.add_controller(pid_cart)
+manager.add_controller(pid_point)
+manager.add_controller(node_cart)
+manager.add_controller(node_point)
 
 
 def main():
     env = gym.make('MountainCar-v0')
-    environment = controllers.EnvironmentManager(env, learner, MountainCar(env))
+    environment = controllers.EnvironmentManager(env, manager, MountainCar(env))
 
     environment.run()
-    for i in range(len(learner.controllers)):
-        learner.select_controller(i)
-        print(learner.selected.name, '=', learner.get_string())
+    for i in range(manager.get_size()):
+        manager.select_controller(i)
+        print(manager.name, '=', manager.get_string())
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 import statistics
 import textwrap
 import time
-from abc import ABC, abstractmethod
+import abc
 
 import gym
 import numpy as np
@@ -12,50 +12,97 @@ from mutations import mutate_io_controller
 
 
 class InOutController:
-    @abstractmethod
+    @abc.abstractmethod
     def __init__(self):
         self.output = 0
 
-    @abstractmethod
+    @abc.abstractmethod
     def set_control(self, preset: tuple):
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def get_control(self) -> tuple:
         return 0, 0, 0
 
-    @abstractmethod
+    @abc.abstractmethod
     def get_output(self, values: tuple, target: float) -> float:
         return 0
 
-    @abstractmethod
+    @abc.abstractmethod
     def reset(self):
         self.output = 0
 
 
 class LearningController:
-    @abstractmethod
+    @abc.abstractmethod
     def __init__(self, name=''):
         self.name = name
 
-    @abstractmethod
+    @abc.abstractmethod
     def explore(self) -> None:
         raise NotImplementedError
 
-    @abstractmethod
+    @abc.abstractmethod
     def reflect(self) -> None:
         raise NotImplementedError
 
-    @abstractmethod
+    @abc.abstractmethod
     def reward(self, reward) -> None:
         raise NotImplementedError
 
-    @abstractmethod
+    @abc.abstractmethod
     def reset(self) -> None:
         raise NotImplementedError
 
-    @abstractmethod
+    @abc.abstractmethod
     def get_string(self) -> str:
+        raise NotImplementedError
+
+
+class BaseManager:
+    """
+    Base class that stores and manages
+    learning/io/any controllers.
+    """
+
+    @abc.abstractmethod
+    def add_controller(self, controller) -> None:
+        """
+        Adds a controller to the manager configuration.
+
+        :param controller: Any instance of a controller
+        :return: None
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def select_controller(self, index) -> None:
+        """
+        Selects a controller at the given index in the
+        manager configuration.
+
+        :param int index: Index of a controller.
+        :return: None
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def next_controller(self) -> None:
+        """
+        Selects the next controller in the manager configuration.
+
+        :return: None
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def get_size(self) -> int:
+        """
+        Returns the amount of stored controllers configuration
+        inside the controller manager.
+
+        :return: Amount stored controllers
+        """
         raise NotImplementedError
 
 
@@ -64,15 +111,15 @@ class EnvironmentWorker:
         self.action_space = env.action_space
         self.difficulty = 0
 
-    @abstractmethod
+    @abc.abstractmethod
     def reset(self):
         self.difficulty = 0
 
-    @abstractmethod
+    @abc.abstractmethod
     def get_action(self, observation: gym.core.ObsType) -> gym.core.ActType:
         return self.action_space.sample()
 
-    @abstractmethod
+    @abc.abstractmethod
     def get_reward(self, observation: gym.core.ObsType) -> float:
         return 0
 
@@ -131,7 +178,7 @@ class NodeController(InOutController):
         self.output = 0
 
 
-class ImprovingController(LearningController, ABC):
+class ImprovingController(LearningController, abc.ABC):
     def __init__(self, name=''):
         super().__init__(name)
         self.previous_rewards = []
@@ -149,7 +196,8 @@ class ImprovingController(LearningController, ABC):
         self.current_rewards = []
 
 
-class ImprovingInOutController(InOutController, ImprovingController, ABC):
+class ImprovingInOutController(
+    InOutController, ImprovingController, abc.ABC):
     def __init__(self, name='', preset=(0, 0, 0)):
         InOutController.__init__(self)
         ImprovingController.__init__(self, name)
@@ -207,7 +255,11 @@ class ImprovingNodeController(ImprovingInOutController, NodeController):
             raise ValueError('Please provide a preset')
 
 
-class RotatingController:
+class LearningControllerManager(BaseManager):
+    """
+    Subclass that stores and manage learning controllers.
+    """
+
     def __init__(self):
         self.controllers: list[LearningController] = []
         self.selected = LearningController()
@@ -220,7 +272,7 @@ class RotatingController:
         self.select_controller(0)
 
     def select_controller(self, index):
-        if len(self.controllers) <= index:
+        if not index < len(self.controllers):
             index = 0
         self.index = index
         self.selected = self.controllers[index]
@@ -231,11 +283,14 @@ class RotatingController:
     def next_controller(self):
         self.select_controller(self.index + 1)
 
+    def get_size(self):
+        return len(self.controllers)
 
-class RotatingImprovingController(ImprovingController, RotatingController):
+
+class ImprovingControllerManager(ImprovingController, LearningControllerManager):
     def __init__(self):
-        ImprovingController.__init__(self, 'Rotating')
-        RotatingController.__init__(self)
+        ImprovingController.__init__(self, 'Manager')
+        LearningControllerManager.__init__(self)
         self.is_rotating = True
         self.is_next = False
         self.count = 0
@@ -268,27 +323,11 @@ class RotatingImprovingController(ImprovingController, RotatingController):
             self.is_next = True
 
     def get_string(self) -> str:
-        return RotatingController.get_string(self)
+        return LearningControllerManager.get_string(self)
 
     def reset(self):
         for controller in self.controllers:
             controller.reset()
-
-
-# class GeneticMultiController(LearningController):
-#     def __init__(self):
-#         self.controllers: List[LearningController] = []
-#         self.selected: LearningController = LearningController()
-#         self.is_rotating = True
-#         self.index = 0
-#         self.count = 0
-#         self.previous_rewards = []
-#         self.current_rewards = []
-#
-# class GeneticInOutController(InOutController, LearningController):
-#     def __init__(self, name='', preset=(0, 0, 0)):
-#         super().__init__(preset)
-#         self.name = name
 
 
 class EnvironmentMonitor:
@@ -526,8 +565,7 @@ def get_is_improving(new_values, old_values):
     return a, b, c
 
 
-def get_index_changed(tuple_a, tuple_b):
-    # get_index_difference
+def get_index_difference(tuple_a, tuple_b):
     """
     Compares two data sets and returns the index
     when a difference has been found.

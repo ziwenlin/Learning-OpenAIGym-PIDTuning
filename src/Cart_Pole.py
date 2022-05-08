@@ -34,11 +34,11 @@ class CartPole(controllers.EnvironmentWorker):
     def get_reward(self, observation: gym.core.ObsType) -> float:
         reward = 0
         cart_x, cart_v, pole_p, pole_v = observation
-        if learner.name in ('PID_POLE', 'NODE_POLE'):
+        if manager.name in ('PID_POLE', 'NODE_POLE'):
             reward -= abs(pole_p * 0.80) ** 0.5
-        elif learner.name in ('PID_CART', 'NODE_CART'):
+        elif manager.name in ('PID_CART', 'NODE_CART'):
             reward -= abs(cart_v - self.position) ** 0.5
-        elif learner.name in ('PID_POINT', 'NODE_POINT'):
+        elif manager.name in ('PID_POINT', 'NODE_POINT'):
             reward -= abs(cart_v - self.position) ** 0.5
         else:
             reward -= abs(cart_v - self.position) ** 0.5
@@ -89,24 +89,24 @@ pid_point = controllers.ImprovingPIDController('PID_POINT', PID_POINT)
 node_pole = controllers.ImprovingNodeController('NODE_POLE', NODE_POLE)
 node_cart = controllers.ImprovingNodeController('NODE_CART', NODE_CART)
 node_point = controllers.ImprovingNodeController('NODE_POINT', NODE_POINT)
-learner = controllers.RotatingImprovingController()
-learner.add_controller(pid_cart)
-learner.add_controller(pid_pole)
-learner.add_controller(pid_point)
-learner.add_controller(node_cart)
-learner.add_controller(node_pole)
-learner.add_controller(node_point)
+manager = controllers.ImprovingControllerManager()
+manager.add_controller(pid_cart)
+manager.add_controller(pid_pole)
+manager.add_controller(pid_point)
+manager.add_controller(node_cart)
+manager.add_controller(node_pole)
+manager.add_controller(node_point)
 
 
 def main():
     env = gym.make('CartPole-v1')
-    environment = controllers.EnvironmentManager(env, learner, CartPole(env))
+    environment = controllers.EnvironmentManager(env, manager, CartPole(env))
     # environment.controller.episode = environment.episode = Settings.EPISODE_CAP // 10 * 7
 
     environment.run()
-    for i in range(len(learner.controllers)):
-        learner.select_controller(i)
-        print(learner.selected.name, '=', learner.get_string())
+    for i in range(manager.get_size()):
+        manager.select_controller(i)
+        print(manager.name, '=', manager.get_string())
 
 
 def main1():

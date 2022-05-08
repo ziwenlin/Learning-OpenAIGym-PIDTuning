@@ -94,7 +94,7 @@ class BaseTest:
 
     class RotatingController(TestCase):
         def setUp(self) -> None:
-            self.controller = controllers.RotatingController()
+            self.controller = controllers.LearningControllerManager()
 
         # Todo add more tests here
         def test_next_controller_when_empty(self):
@@ -276,7 +276,7 @@ class TestRotatingImprovingController(BaseTest.ImprovingController,
                                       BaseTest.RotatingController):
     # Todo add more tests here
     def setUp(self) -> None:
-        self.controller = controllers.RotatingImprovingController()
+        self.controller = controllers.ImprovingControllerManager()
         self.controller.add_controller(controllers.ImprovingPIDController())
 
     def test_reflect_is_counting(self):
