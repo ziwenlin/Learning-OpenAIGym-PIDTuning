@@ -11,7 +11,7 @@ NODE = (0.5, 0.1, 2, 0)
 class BaseTest:
     class InOutController(TestCase):
         def setUp(self) -> None:
-            self.controller = controllers.InOutController()
+            self.controller = controllers.InOutModel()
 
         def test_reset_output_is_implemented(self):
             self.assertEqual(0, self.controller.output)
@@ -29,7 +29,7 @@ class BaseTest:
             self.assertEqual(output, self.controller.output)
 
         def test_get_control_is_implemented(self):
-            control = self.controller.get_control()
+            control = self.controller.get_model()
             self.assertEqual(tuple, type(control))
 
     class ImprovingController(TestCase):
@@ -111,7 +111,7 @@ class BaseTest:
             controller = self.controller
             if len(self.controller.controllers) == 0:
                 self.assertEqual(0, len(controller.controllers))
-                controller.add_controller(controllers.ImprovingPIDController())
+                controller.add_controller(controllers.ImprovingPIDModel())
             self.assertEqual(1, len(controller.controllers))
             self.assertEqual(controller.selected,
                              controller.controllers[0])
@@ -123,11 +123,11 @@ class BaseTest:
 #
 #     def test_set_control(self):
 #         with self.assertRaises(NotImplementedError):
-#             self.controller.set_control(object)
+#             self.controller.set_model(object)
 #
 #     def test_get_control(self):
 #         with self.assertRaises(NotImplementedError):
-#             self.controller.get_control()
+#             self.controller.get_model()
 #
 #     def test_get_output(self):
 #         with self.assertRaises(NotImplementedError):
@@ -140,11 +140,11 @@ class BaseTest:
 
 class TestPIDController(BaseTest.InOutController):
     def setUp(self) -> None:
-        self.controller = controllers.PIDController(PID)
+        self.controller = controllers.PIDModel(PID)
 
     def test_set_control(self):
         pid = (5, 1, 9)
-        self.controller.set_control(pid)
+        self.controller.set_model(pid)
         self.assertEqual(5, self.controller.p_control)
         self.assertEqual(1, self.controller.i_control)
         self.assertEqual(9, self.controller.d_control)
@@ -152,10 +152,10 @@ class TestPIDController(BaseTest.InOutController):
     def test_set_control_failure(self):
         pid = (1, 4, 5, 6)
         with self.assertRaises(ValueError):
-            self.controller.set_control(pid)
+            self.controller.set_model(pid)
 
     def test_get_control(self):
-        pid = self.controller.get_control()
+        pid = self.controller.get_model()
         self.assertEqual(PID, pid)
         self.assertEqual(10, self.controller.p_control)
         self.assertEqual(0.1, self.controller.i_control)
@@ -197,14 +197,14 @@ class TestPIDController(BaseTest.InOutController):
 
 class TestNodeController(BaseTest.InOutController):
     def setUp(self) -> None:
-        self.controller = controllers.NodeController(NODE)
+        self.controller = controllers.NodeModel(NODE)
 
     def test_set_control(self):
-        self.controller.set_control((0, 1, 2, 3))
+        self.controller.set_model((0, 1, 2, 3))
         self.assertEqual((0, 1, 2, 3), self.controller.control)
 
     def test_get_control(self):
-        control = self.controller.get_control()
+        control = self.controller.get_model()
         self.assertEqual((0.5, 0.1, 2, 0), control)
 
     def test_get_output(self):
@@ -215,7 +215,7 @@ class TestNodeController(BaseTest.InOutController):
 class TestImprovingInOutController(BaseTest.ImprovingController):
     def setUp(self) -> None:
         # Using PID because the following tests need an implemented controller
-        self.controller = controllers.ImprovingInOutController()
+        self.controller = controllers.ImprovingNodeModel(preset=(0, 0, 0))
 
     def test_get_string(self):
         text = self.controller.get_string()
@@ -252,11 +252,11 @@ class TestImprovingInOutController(BaseTest.ImprovingController):
 
 class TestLearningNodeController(BaseTest.ImprovingController):
     def setUp(self) -> None:
-        self.controller = controllers.ImprovingNodeController(NAME, NODE)
+        self.controller = controllers.ImprovingNodeModel(NAME, NODE)
 
     def test_init_none_preset(self):
         with self.assertRaises(ValueError):
-            controllers.ImprovingNodeController()
+            controllers.ImprovingNodeModel()
 
     def test_get_string(self):
         text = self.controller.get_string()
@@ -265,7 +265,7 @@ class TestLearningNodeController(BaseTest.ImprovingController):
 
 class TestLearningPIDController(BaseTest.ImprovingController):
     def setUp(self) -> None:
-        self.controller = controllers.ImprovingPIDController(NAME, PID)
+        self.controller = controllers.ImprovingPIDModel(NAME, PID)
 
     def test_get_string(self):
         text = self.controller.get_string()
@@ -277,7 +277,7 @@ class TestRotatingImprovingController(BaseTest.ImprovingController,
     # Todo add more tests here
     def setUp(self) -> None:
         self.controller = controllers.ImprovingControllerManager()
-        self.controller.add_controller(controllers.ImprovingPIDController())
+        self.controller.add_controller(controllers.ImprovingPIDModel())
 
     def test_reflect_is_counting(self):
         self.assertEqual(0, self.controller.count)

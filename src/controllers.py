@@ -11,25 +11,60 @@ import settings
 from mutations import mutate_io_controller
 
 
-class InOutController:
+class InOutModel:
+    """
+    Base class that provides the interface for any models.
+
+    Available methods:
+    :method:`set_model()`,
+    :method:`get_model()`,
+    :method:`get_output()`,
+    :method:`reset()`
+    """
+
     @abc.abstractmethod
     def __init__(self):
         self.output = 0
 
     @abc.abstractmethod
-    def set_control(self, preset: tuple):
-        pass
+    def set_model(self, model: tuple) -> None:
+        """
+        Overwrite the current model with a new
+        model configuration.
+
+        :param model: Desired model configuration
+        :return: None
+        """
+        raise NotImplementedError
 
     @abc.abstractmethod
-    def get_control(self) -> tuple:
-        return 0, 0, 0
+    def get_model(self) -> tuple:
+        """
+        Returns the current model configuration.
+
+        :return: Current model configuration
+        """
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_output(self, values: tuple, target: float) -> float:
-        return 0
+        """
+        Returns an output based on the input values and target.
+        The model tries to match the input values to the target.
+
+        :param values: Environment observation values
+        :param target: Desired output value
+        :return: Output of the model
+        """
+        raise NotImplementedError
 
     @abc.abstractmethod
-    def reset(self):
+    def reset(self) -> None:
+        """
+        Restores all attributes to the starting state.
+
+        :return: None
+        """
         self.output = 0
 
 
@@ -62,7 +97,7 @@ class LearningController:
 class BaseManager:
     """
     Base class that stores and manages
-    learning/io/any controllers.
+    models or controllers.
     """
 
     @abc.abstractmethod
@@ -124,7 +159,7 @@ class EnvironmentWorker:
         return 0
 
 
-class PIDController(InOutController):
+class PIDModel(InOutModel):
     def __init__(self, preset):
         super().__init__()
         self.d_value = 0
@@ -132,10 +167,10 @@ class PIDController(InOutController):
 
         self.p_control, self.i_control, self.d_control = preset
 
-    def set_control(self, preset):
-        self.p_control, self.i_control, self.d_control = preset
+    def set_model(self, model):
+        self.p_control, self.i_control, self.d_control = model
 
-    def get_control(self):
+    def get_model(self):
         return self.p_control, self.i_control, self.d_control
 
     def get_output(self, values, target):
@@ -156,15 +191,15 @@ class PIDController(InOutController):
         self.i_value = 0
 
 
-class NodeController(InOutController):
+class NodeModel(InOutModel):
     def __init__(self, preset):
         super().__init__()
         self.control = preset
 
-    def set_control(self, preset):
-        self.control = tuple(preset)
+    def set_model(self, model):
+        self.control = tuple(model)
 
-    def get_control(self) -> tuple:
+    def get_model(self) -> tuple:
         return tuple(self.control)
 
     def get_output(self, observation, offset) -> float:
@@ -196,21 +231,21 @@ class ImprovingController(LearningController, abc.ABC):
         self.current_rewards = []
 
 
-class ImprovingInOutController(
-    InOutController, ImprovingController, abc.ABC):
+class ImprovingInOutModel(
+    InOutModel, ImprovingController, abc.ABC):
     def __init__(self, name='', preset=(0, 0, 0)):
-        InOutController.__init__(self)
+        InOutModel.__init__(self)
         ImprovingController.__init__(self, name)
         self.current_control = preset
         self.previous_control = preset
 
     def get_string(self):
-        return get_tuple_string(self.get_control())
+        return get_tuple_string(self.get_model())
 
     def explore(self):
         self.current_control = mutate_io_controller(
             self.current_control, self.previous_control)
-        self.set_control(self.current_control)
+        self.set_model(self.current_control)
 
     def reflect(self):
         previous_rewards = self.previous_rewards
@@ -232,32 +267,33 @@ class ImprovingInOutController(
             self.previous_rewards = previous_rewards
             self.current_control = self.previous_control
 
-        self.set_control(self.current_control)
+        self.set_model(self.current_control)
         self.current_rewards = []
 
 
-class ImprovingPIDController(ImprovingInOutController, PIDController):
+class ImprovingPIDModel(ImprovingInOutModel, PIDModel):
     def __init__(self, name='', preset=(0, 0, 0)):
-        ImprovingInOutController.__init__(self, name, preset)
-        PIDController.__init__(self, preset)
+        ImprovingInOutModel.__init__(self, name, preset)
+        PIDModel.__init__(self, preset)
 
     def explore(self):
         self.current_control = mutate_io_controller(
             self.current_control, self.previous_control, 'pid')
-        self.set_control(self.current_control)
+        self.set_model(self.current_control)
 
 
-class ImprovingNodeController(ImprovingInOutController, NodeController):
+class ImprovingNodeModel(ImprovingInOutModel, NodeModel):
     def __init__(self, name='', preset=None):
-        ImprovingInOutController.__init__(self, name, preset)
-        NodeController.__init__(self, preset)
+        ImprovingInOutModel.__init__(self, name, preset)
+        NodeModel.__init__(self, preset)
         if preset is None:
             raise ValueError('Please provide a preset')
 
 
 class LearningControllerManager(BaseManager):
     """
-    Subclass that stores and manage learning controllers.
+    Implements :class:`BaseManager` and stores and manages
+    multiple instances of :class:`LearningController`.
     """
 
     def __init__(self):
@@ -565,15 +601,15 @@ def get_is_improving(new_values, old_values):
     return a, b, c
 
 
-def get_index_difference(tuple_a, tuple_b):
+def get_index_difference(tuple_a, tuple_b) -> int:
     """
     Compares two data sets and returns the index
     when a difference has been found.
 
-    :param tuple or list tuple_a: Data set to compare
-    :param tuple or list tuple_b: Data set to compare
-    :return: Index of first difference, defaults to -1 if nothing has been found
-    :rtype: int
+    :param tuple or list tuple_a: Container to compare
+    :param tuple or list tuple_b: Container to compare
+    :return: Index of first difference, defaults to -1
+     if nothing has been found
     """
     for index in range(len(tuple_a)):
         if tuple_b[index] != tuple_a[index]:
@@ -581,7 +617,7 @@ def get_index_difference(tuple_a, tuple_b):
     return -1
 
 
-def get_index_random(index_range, index_skip=-1):
+def get_index_random(index_range, index_skip=-1) -> int:
     """
     Gets random index within a maximum range.
     When index_skip is specified it will not return that number.
@@ -589,7 +625,6 @@ def get_index_random(index_range, index_skip=-1):
     :param int index_range: Maximum value of the random index
     :param int index_skip: Index that is not allowed to be picked
     :return: Random index number
-    :rtype: int
     """
     random_index = np.random.randint(index_range)
     while random_index == index_skip:
@@ -597,13 +632,13 @@ def get_index_random(index_range, index_skip=-1):
     return random_index
 
 
-def get_index_closest(value, data):
+def get_index_closest(value, data) -> int:
     """
     Returns the index of the closest value at the given value.
 
-    :param list or tuple data:
+    :param list or tuple data: Container with values
     :param float or int value: Any value that has some
-    relation to the given list or tuple
+    relation to the given container
     :return: Index at closest value
     """
     item = min(data, key=lambda x: abs(x - value))
