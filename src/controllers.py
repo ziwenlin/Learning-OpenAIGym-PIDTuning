@@ -8,7 +8,7 @@ import numpy as np
 from tabulate import tabulate
 
 import settings
-from mutations import mutate_io_controller
+from mutations import mutate_io_model
 
 
 class InOutModel:
@@ -69,35 +69,81 @@ class InOutModel:
 
 
 class LearningController:
+    """
+    Base class that provides the interface for any learning controllers.
+    Used in machine learning environments to train agents.
+
+    Available methods:
+    :method:`explore()`,
+    :method:`reflect()`,
+    :method:`reward()`,
+    :method:`reset()`,
+    :method:`get_string()`
+    """
+
     @abc.abstractmethod
     def __init__(self, name=''):
         self.name = name
 
     @abc.abstractmethod
     def explore(self) -> None:
+        """
+        After calling the reflect method the explore method
+        gets called. This method manages the configuration.
+
+        :return: None
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
     def reflect(self) -> None:
+        """
+        After every nth episode reflect method gets called
+        to look for any results and processes them.
+
+        :return: None
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
-    def reward(self, reward) -> None:
+    def reward(self, reward: float) -> None:
+        """
+        This method gets called after every episode and
+        stores the received rewards.
+
+        :param reward: Reward of a episode
+        :return: None
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
     def reset(self) -> None:
+        """
+        This method gets called after receiving the rewards
+        and resets configuration attributes to the starting state.
+
+        :return: None
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
     def get_string(self) -> str:
+        """
+        Returns a representation of the current
+        learning controller configuration.
+        """
         raise NotImplementedError
 
 
 class BaseManager:
     """
-    Base class that stores and manages
-    models or controllers.
+    Base class that stores and manages controllers.
+
+    Available methods:
+    :method:`add_controller()`,
+    :method:`select_controller()`,
+    :method:`next_controller()`,
+    :method:`get_size()`
     """
 
     @abc.abstractmethod
@@ -142,12 +188,18 @@ class BaseManager:
 
 
 class EnvironmentWorker:
+    """
+    Interface class which delivers the input values to the models,
+    converts the output of the model to the action space of
+    the environment, and calculates additional rewards.
+    """
+
     def __init__(self, env: gym.Env):
         self.action_space = env.action_space
         self.difficulty = 0
 
     @abc.abstractmethod
-    def reset(self):
+    def reset(self) -> None:
         self.difficulty = 0
 
     @abc.abstractmethod
@@ -160,72 +212,91 @@ class EnvironmentWorker:
 
 
 class PIDModel(InOutModel):
+    """
+    Implements from :class:`InOutModel`. Uses PID based model
+    to calculate a output based on the input values.
+    """
+
     def __init__(self, preset):
         super().__init__()
-        self.d_value = 0
-        self.i_value = 0
+        self.value_d = 0
+        self.value_i = 0
 
-        self.p_control, self.i_control, self.d_control = preset
+        self.model_p, self.model_i, self.model_d = preset
 
-    def set_model(self, model):
-        self.p_control, self.i_control, self.d_control = model
+    def set_model(self, model: tuple) -> None:
+        self.model_p, self.model_i, self.model_d = model
 
-    def get_model(self):
-        return self.p_control, self.i_control, self.d_control
+    def get_model(self) -> tuple:
+        return self.model_p, self.model_i, self.model_d
 
-    def get_output(self, values, target):
+    def get_output(self, values: tuple, target: float) -> float:
         error = target - sum(values)
 
-        p = self.p_control * error
-        i = self.i_control * (error + self.i_value)
-        d = self.d_control * (error - self.d_value)
+        p = self.model_p * error
+        i = self.model_i * (error + self.value_i)
+        d = self.model_d * (error - self.value_d)
 
-        self.i_value += error
-        self.d_value = error  # Used as previous error
+        self.value_i += error
+        self.value_d = error
         self.output = p + i + d
         return self.output
 
-    def reset(self):
+    def reset(self) -> None:
         self.output = 0
-        self.d_value = 0
-        self.i_value = 0
+        self.value_d = 0
+        self.value_i = 0
 
 
 class NodeModel(InOutModel):
+    """
+    Implements from :class:`InOutModel`. Uses weight based model
+    to calculate a output based on the input values.
+    """
+
     def __init__(self, preset):
         super().__init__()
         self.control = preset
 
-    def set_model(self, model):
+    def set_model(self, model: tuple) -> None:
         self.control = tuple(model)
 
     def get_model(self) -> tuple:
         return tuple(self.control)
 
-    def get_output(self, observation, offset) -> float:
-        output = offset
-        for weight, value in zip(self.control, observation):
+    def get_output(self, values: tuple, target: float) -> float:
+        output = target
+        for weight, value in zip(self.control, values):
             output += weight * value
         self.output = output
         return output
 
-    def reset(self):
+    def reset(self) -> None:
         self.output = 0
 
 
 class ImprovingController(LearningController, abc.ABC):
+    """
+    Implements from :class:`LearningController` and is base class
+    that provides an interface for improvement based learning.
+    Uses reward based calculations to decide whether improvements
+    have been made.
+    """
+
     def __init__(self, name=''):
         super().__init__(name)
         self.previous_rewards = []
         self.current_rewards = []
         self.is_improving = [False, False, False]
 
-    def reward(self, reward):
+    def reward(self, reward: float) -> None:
         self.current_rewards.append(reward)
 
     def reflect(self) -> None:
+        previous_rewards = self.previous_rewards
+        current_rewards = self.current_rewards
         self.is_improving = get_is_improving(
-            self.current_rewards, self.previous_rewards
+            current_rewards, previous_rewards
         )
         self.previous_rewards = self.current_rewards
         self.current_rewards = []
@@ -233,21 +304,28 @@ class ImprovingController(LearningController, abc.ABC):
 
 class ImprovingInOutModel(
     InOutModel, ImprovingController, abc.ABC):
+    """
+    Implements from :class:`InOutModel` and :class:`ImprovingController`
+    and is base class that provides improvement based learning to any
+    instances of :class:`InOutModel`. Uses reward based calculations to
+    decide whether improvements have been made.
+    """
+
     def __init__(self, name='', preset=(0, 0, 0)):
         InOutModel.__init__(self)
         ImprovingController.__init__(self, name)
-        self.current_control = preset
-        self.previous_control = preset
+        self.current_model = preset
+        self.previous_model = preset
 
-    def get_string(self):
+    def get_string(self) -> str:
         return get_tuple_string(self.get_model())
 
-    def explore(self):
-        self.current_control = mutate_io_controller(
-            self.current_control, self.previous_control)
-        self.set_model(self.current_control)
+    def explore(self) -> None:
+        self.current_model = mutate_io_model(
+            self.current_model, self.previous_model)
+        self.set_model(self.current_model)
 
-    def reflect(self):
+    def reflect(self) -> None:
         previous_rewards = self.previous_rewards
         current_rewards = self.current_rewards
         ImprovingController.reflect(self)
@@ -257,32 +335,44 @@ class ImprovingInOutModel(
         avg, low, high = is_improving
 
         if low and avg or low and high or avg and high:
-            # When the newer control has scored an equal or better score
-            # Overwrite the previous reward and control
+            # When the newer model has scored an equal or better score
+            # Overwrite the previous reward and model
             self.previous_rewards = current_rewards
-            self.previous_control = self.current_control
+            self.previous_model = self.current_model
         else:
             # Revert the changes
-            # Restore previous reward and current control
+            # Restore previous reward and current model
             self.previous_rewards = previous_rewards
-            self.current_control = self.previous_control
+            self.current_model = self.previous_model
 
-        self.set_model(self.current_control)
+        self.set_model(self.current_model)
         self.current_rewards = []
 
 
 class ImprovingPIDModel(ImprovingInOutModel, PIDModel):
+    """
+    Implements from :class:`ImprovingInOutModel` and :class:`PIDModel`
+    and uses reward based calculations to
+    decide whether improvements have been made.
+    """
+
     def __init__(self, name='', preset=(0, 0, 0)):
         ImprovingInOutModel.__init__(self, name, preset)
         PIDModel.__init__(self, preset)
 
-    def explore(self):
-        self.current_control = mutate_io_controller(
-            self.current_control, self.previous_control, 'pid')
-        self.set_model(self.current_control)
+    def explore(self) -> None:
+        self.current_model = mutate_io_model(
+            self.current_model, self.previous_model, 'pid')
+        self.set_model(self.current_model)
 
 
 class ImprovingNodeModel(ImprovingInOutModel, NodeModel):
+    """
+    Implements from :class:`ImprovingInOutModel` and :class:`NodeModel`
+    and uses reward based calculations to
+    decide whether improvements have been made.
+    """
+
     def __init__(self, name='', preset=None):
         ImprovingInOutModel.__init__(self, name, preset)
         NodeModel.__init__(self, preset)
@@ -292,8 +382,16 @@ class ImprovingNodeModel(ImprovingInOutModel, NodeModel):
 
 class LearningControllerManager(BaseManager):
     """
-    Implements :class:`BaseManager` and stores and manages
-    multiple instances of :class:`LearningController`.
+    Implements :class:`BaseManager` which stores and manages
+    multiple instances of :class:`LearningController`. The
+    class keeps track of selected controller and provides
+    rotating select mechanism to the manager.
+
+    Available methods:
+    :method:`add_controller()`,
+    :method:`select_controller()`,
+    :method:`next_controller()`,
+    :method:`get_size()`
     """
 
     def __init__(self):
@@ -324,6 +422,14 @@ class LearningControllerManager(BaseManager):
 
 
 class ImprovingControllerManager(ImprovingController, LearningControllerManager):
+    """
+    Implements from :class:`ImprovingController`
+    and :class:`LearningControllerManager`
+    and uses reward based calculations to
+    decide whether a controller should be learning
+    or the next controller should be selected for learning.
+    """
+
     def __init__(self):
         ImprovingController.__init__(self, 'Manager')
         LearningControllerManager.__init__(self)
@@ -361,12 +467,18 @@ class ImprovingControllerManager(ImprovingController, LearningControllerManager)
     def get_string(self) -> str:
         return LearningControllerManager.get_string(self)
 
-    def reset(self):
+    def reset(self) -> None:
         for controller in self.controllers:
             controller.reset()
 
 
 class EnvironmentMonitor:
+    """
+    Class monitors the episode values, processes the
+    values into high, low, average, etc..., and generates
+    logs with representation of the values in a table.
+    """
+
     def __init__(self):
         self.buffer: list[dict] = []
         self.results: list[dict[str, any]] = []
@@ -445,6 +557,11 @@ class EnvironmentMonitor:
 
 
 class EnvironmentManager:
+    """
+    Class manages the environment, episodes, agent, worker
+    and all components method calls.
+    """
+
     def __init__(self,
                  environment: gym.Env,
                  agent: LearningController,
@@ -551,11 +668,25 @@ class EnvironmentManager:
         self.stop()
 
 
-def get_tuple_string(array: tuple):
-    return f'{tuple(float(f"{value:.4f}") for value in array)}'
+def get_tuple_string(array: tuple) -> str:
+    """
+    Returns a reformatted tuple in text form.
+
+    :param array: Collection of float values
+    :return: Tuple in text
+    """
+    return f'{tuple(round(value, 4) for value in array)}'
 
 
-def get_improvement_gain(current, previous):
+def get_improvement_gain(current: float, previous: float) -> float:
+    """
+    Returns the improvement factor between the
+    current value and previous value.
+
+    :param current: Current values
+    :param previous: Previous values
+    :return: Improvement factor
+    """
     if current > 0 and previous > 0:
         pass
     elif current > previous:
@@ -565,7 +696,7 @@ def get_improvement_gain(current, previous):
         previous += abs(current) + 2
         current += abs(current) + 1
     elif current == previous:
-        current = 9
+        current = 10
         previous = 10
     improvement = current / previous
     return improvement

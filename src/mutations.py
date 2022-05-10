@@ -5,11 +5,12 @@ import settings
 import controllers
 
 
-def mutate_io_controller(current, previous, io_type=''):
+def mutate_io_model(current, previous, io_type=''):
     """
-    Compares, modifies, and returns new tuple where a single float of the tuple has been changed.
-    Decides randomly wheather the controller should improve or explore the settings.
-    At the start the exploring option is picked frequently than the improving option.
+    Compares, modifies, and returns new tuple where a single float of
+    the model has been changed. Decides randomly wheather the controller
+    should improve or explore the settings. At the start the exploring
+    option is picked frequently than the improving option.
 
     :param tuple or list current: Current controller configuration
     :param tuple or list previous: Previous controller configuration
@@ -34,7 +35,8 @@ def mutate_io_controller(current, previous, io_type=''):
 
 def mutate_io_controller_random(controller, index=-1, io_type=''):
     """
-    Compares, modifies, and returns new tuple where a single float of the tuple has been changed.
+    Compares, modifies, and returns new model where a single float of
+    the model has been changed.
     When index is specified it changes the value of the given position
     otherwise, it will take a random index.
 

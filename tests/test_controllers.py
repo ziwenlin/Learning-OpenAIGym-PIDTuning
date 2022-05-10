@@ -145,9 +145,9 @@ class TestPIDController(BaseTest.InOutController):
     def test_set_control(self):
         pid = (5, 1, 9)
         self.controller.set_model(pid)
-        self.assertEqual(5, self.controller.p_control)
-        self.assertEqual(1, self.controller.i_control)
-        self.assertEqual(9, self.controller.d_control)
+        self.assertEqual(5, self.controller.model_p)
+        self.assertEqual(1, self.controller.model_i)
+        self.assertEqual(9, self.controller.model_d)
 
     def test_set_control_failure(self):
         pid = (1, 4, 5, 6)
@@ -157,23 +157,23 @@ class TestPIDController(BaseTest.InOutController):
     def test_get_control(self):
         pid = self.controller.get_model()
         self.assertEqual(PID, pid)
-        self.assertEqual(10, self.controller.p_control)
-        self.assertEqual(0.1, self.controller.i_control)
-        self.assertEqual(2, self.controller.d_control)
+        self.assertEqual(10, self.controller.model_p)
+        self.assertEqual(0.1, self.controller.model_i)
+        self.assertEqual(2, self.controller.model_d)
 
     def test_get_output_positive(self):
         setpoint, value = 100, (10,)
         output = self.controller.get_output(value, setpoint)
-        self.assertEqual(90, self.controller.i_value)
-        self.assertEqual(90, self.controller.d_value)
+        self.assertEqual(90, self.controller.value_i)
+        self.assertEqual(90, self.controller.value_d)
         self.assertEqual(900 + 9 + 180, output)
         output = self.controller.get_output(value, setpoint)
-        self.assertEqual(180, self.controller.i_value)
-        self.assertEqual(90, self.controller.d_value)
+        self.assertEqual(180, self.controller.value_i)
+        self.assertEqual(90, self.controller.value_d)
         self.assertEqual(900 + 18 + 0, output)
         output = self.controller.get_output(value, setpoint)
-        self.assertEqual(270, self.controller.i_value)
-        self.assertEqual(90, self.controller.d_value)
+        self.assertEqual(270, self.controller.value_i)
+        self.assertEqual(90, self.controller.value_d)
         self.assertEqual(900 + 27 + 0, output)
 
     def test_get_output_negative(self):
@@ -188,11 +188,11 @@ class TestPIDController(BaseTest.InOutController):
     def test_reset(self):
         setpoint, value = 100, (10,)
         self.controller.get_output(value, setpoint)
-        self.assertEqual(90, self.controller.i_value)
-        self.assertEqual(90, self.controller.d_value)
+        self.assertEqual(90, self.controller.value_i)
+        self.assertEqual(90, self.controller.value_d)
         self.controller.reset()
-        self.assertEqual(0, self.controller.i_value)
-        self.assertEqual(0, self.controller.d_value)
+        self.assertEqual(0, self.controller.value_i)
+        self.assertEqual(0, self.controller.value_d)
 
 
 class TestNodeController(BaseTest.InOutController):
@@ -222,32 +222,32 @@ class TestImprovingInOutController(BaseTest.ImprovingController):
         self.assertEqual('(0.0, 0.0, 0.0)', text)
 
     def test_reflect_previous_control_improved_empty_rewards(self):
-        self.controller.current_control = (1, 2, 3)
-        self.assertEqual((0, 0, 0), self.controller.previous_control)
+        self.controller.current_model = (1, 2, 3)
+        self.assertEqual((0, 0, 0), self.controller.previous_model)
 
         self.controller.reflect()
-        self.assertEqual((1, 2, 3), self.controller.current_control)
-        self.assertEqual((1, 2, 3), self.controller.previous_control)
+        self.assertEqual((1, 2, 3), self.controller.current_model)
+        self.assertEqual((1, 2, 3), self.controller.previous_model)
 
     def test_reflect_previous_control_should_not_change(self):
         self.controller.previous_rewards = [10]
         self.controller.current_rewards = [-1]
-        self.controller.current_control = (1, 2, 3)
-        self.assertEqual((0, 0, 0), self.controller.previous_control)
+        self.controller.current_model = (1, 2, 3)
+        self.assertEqual((0, 0, 0), self.controller.previous_model)
         with mock.patch('numpy.random.rand', lambda: 1.0 / 0.9):
             self.controller.reflect()
-        self.assertEqual((0, 0, 0), self.controller.current_control)
-        self.assertEqual((0, 0, 0), self.controller.previous_control)
+        self.assertEqual((0, 0, 0), self.controller.current_model)
+        self.assertEqual((0, 0, 0), self.controller.previous_model)
 
     def test_reflect_previous_control_should_change(self):
         self.controller.previous_rewards = [10]
         self.controller.current_rewards = [100]
-        self.controller.current_control = (1, 2, 3)
-        self.assertEqual((0, 0, 0), self.controller.previous_control)
+        self.controller.current_model = (1, 2, 3)
+        self.assertEqual((0, 0, 0), self.controller.previous_model)
         with mock.patch('numpy.random.rand', lambda: 1.0 / 0.9):
             self.controller.reflect()
-        self.assertEqual((1, 2, 3), self.controller.current_control)
-        self.assertEqual((1, 2, 3), self.controller.previous_control)
+        self.assertEqual((1, 2, 3), self.controller.current_model)
+        self.assertEqual((1, 2, 3), self.controller.previous_model)
 
 
 class TestLearningNodeController(BaseTest.ImprovingController):
@@ -530,11 +530,11 @@ class Test(TestCase):
 
 class TestMutations(TestCase):
     def test_get_control_mutated_returns_tuple(self):
-        result = mutations.mutate_io_controller((0, 0), (0, 0))
+        result = mutations.mutate_io_model((0, 0), (0, 0))
         self.assertEqual(tuple, type(result))
 
     def test_get_control_mutated_improvement_is_different(self):
-        result = mutations.mutate_io_controller((0, 0), (0, 0))
+        result = mutations.mutate_io_model((0, 0), (0, 0))
         if result[0] == 0:
             self.assertNotEqual(0.0, result[1])
         else:
