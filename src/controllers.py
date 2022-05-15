@@ -193,6 +193,11 @@ class EnvironmentWorker:
     Interface class which delivers the input values to the models,
     converts the output of the model to the action space of
     the environment, and calculates additional rewards.
+
+    Available methods:
+    :method:`reset()`,
+    :method:`get_action()`,
+    :method:`get_reward()`,
     """
 
     def __init__(self, env: gym.Env):
@@ -201,14 +206,33 @@ class EnvironmentWorker:
 
     @abc.abstractmethod
     def reset(self) -> None:
+        """
+        Resets all attributes before proceeding to the next
+        episode in the gym environment.
+
+        :return: None
+        """
         self.difficulty = 0
 
     @abc.abstractmethod
     def get_action(self, observation: gym.core.ObsType) -> gym.core.ActType:
+        """
+        Returns action which is processed by the gym environment.
+
+        :param observation: Gym observation object
+        :return: Gym action object
+        """
         return self.action_space.sample()
 
     @abc.abstractmethod
     def get_reward(self, observation: gym.core.ObsType) -> float:
+        """
+        Returns reward by processing observation values into
+        rewards.
+
+        :param observation: Gym observation object
+        :return: Reward value
+        """
         return 0
 
 
