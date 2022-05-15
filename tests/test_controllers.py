@@ -219,7 +219,7 @@ class TestImprovingInOutController(BaseTest.ImprovingController):
 
     def test_get_string(self):
         text = self.controller.get_string()
-        self.assertEqual('(0.0, 0.0, 0.0)', text)
+        self.assertEqual('(0, 0, 0)', text)
 
     def test_reflect_previous_control_improved_empty_rewards(self):
         self.controller.current_model = (1, 2, 3)
@@ -260,7 +260,7 @@ class TestLearningNodeController(BaseTest.ImprovingController):
 
     def test_get_string(self):
         text = self.controller.get_string()
-        self.assertEqual('(0.5, 0.1, 2.0, 0.0)', text)
+        self.assertEqual('(0.5, 0.1, 2, 0)', text)
 
 
 class TestLearningPIDController(BaseTest.ImprovingController):
@@ -269,7 +269,7 @@ class TestLearningPIDController(BaseTest.ImprovingController):
 
     def test_get_string(self):
         text = self.controller.get_string()
-        self.assertEqual('(10.0, 0.1, 2.0)', text)
+        self.assertEqual('(10, 0.1, 2)', text)
 
 
 class TestRotatingImprovingController(BaseTest.ImprovingController,
