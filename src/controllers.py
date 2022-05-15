@@ -276,7 +276,7 @@ class NodeModel(InOutModel):
         self.output = 0
 
 
-class ImprovingController(LearningController, abc.ABC):
+class ImprovingController(LearningController):
     """
     Implements from :class:`LearningController` and is base class
     that provides an interface for improvement based learning.
@@ -301,6 +301,18 @@ class ImprovingController(LearningController, abc.ABC):
         )
         self.previous_rewards = self.current_rewards
         self.current_rewards = []
+
+    @abc.abstractmethod
+    def explore(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def reset(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_string(self) -> str:
+        return self.name
 
 
 class ImprovingInOutModel(
