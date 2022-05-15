@@ -56,11 +56,11 @@ manager.add_controller(pid_point)
 manager.add_controller(node_direct)
 manager.add_controller(node_pendulum)
 manager.add_controller(node_point)
-pid_pole = node_pendulum.model
-pid_cart = node_direct.model
+pid_pendulum = node_pendulum.model
+pid_direct = node_direct.model
 pid_point = pid_point.model
-node_pole = node_pendulum.model
-node_cart = node_direct.model
+node_pendulum = node_pendulum.model
+node_direct = node_direct.model
 node_point = node_point.model
 
 
