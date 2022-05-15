@@ -573,8 +573,8 @@ class EnvironmentMonitor:
         result['lowest'] = round(lowest_value, 2)
         result['median'] = round(median_value, 2)
         result['middle'] = round(middle_value, 2)
-        result['epsilon'] = settings.EPSILON
-        result['multiplier'] = settings.MULTIPLIER_EPSILON
+        result['epsilon'] = round(settings.EPSILON, 3)
+        result['multiplier'] = round(settings.MULTIPLIER_EPSILON, 3)
 
 
 class EnvironmentManager:
