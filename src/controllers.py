@@ -438,13 +438,16 @@ class ImprovingControllerManager(ImprovingController, LearningControllerManager)
         self.is_next = False
         self.count = 0
 
+    def select_controller(self, index: int) -> None:
+        super().select_controller(index)
+        self.name = self.selected.name
+        self.previous_rewards = []
+        self.is_next = False
+        self.count = 0
+
     def explore(self) -> None:
         if self.is_rotating and self.is_next:
             self.next_controller()
-            self.name = self.selected.name
-            self.previous_rewards = []
-            self.is_next = False
-            self.count = 0
         self.selected.explore()
 
     def reflect(self) -> None:
