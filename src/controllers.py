@@ -240,6 +240,8 @@ class PIDModel(InOutModel):
     """
     Implements from :class:`InOutModel`. Uses PID based model
     to calculate a output based on the input values.
+
+
     """
 
     def __init__(self, preset):
@@ -463,7 +465,8 @@ class LearningControllerManager(BaseManager):
         return len(self.controllers)
 
 
-class ImprovingControllerManager(ImprovingController, LearningControllerManager):
+class ImprovingControllerManager(ImprovingController,
+                                 LearningControllerManager):
     """
     Implements from :class:`ImprovingController`
     and :class:`LearningControllerManager`
@@ -588,6 +591,7 @@ class EnvironmentMonitor:
                 result[category][k] = round(value, 2)
 
         get_result('reward')
+        get_result('steps')
         get_result('difficulty')
         get_result('episode')
 
@@ -621,6 +625,7 @@ class EnvironmentManager:
         self.episode = 1
         self.running = False
         self.rewards = 0
+        self.steps = 0
 
     def start(self):
         self.running = True
@@ -635,6 +640,7 @@ class EnvironmentManager:
         if frame_time > self.fps_time:
             self.fps_time = frame_time + 0.1
             self.env.render()
+        time_steps = 0
         observation = self.env.reset()
         self.worker.reset()
         self.agent.reset()
@@ -655,6 +661,7 @@ class EnvironmentManager:
                     print("Episode {} finished after {} time steps"
                           .format(episode, time_steps + 1))
                 break
+        self.time_steps = time_steps + 1
 
     def step_end(self):
         episode = self.episode
@@ -664,6 +671,7 @@ class EnvironmentManager:
             'episode': episode,
             'reward': self.rewards,
             'difficulty': self.worker.difficulty,
+            'steps': self.time_steps,
         })
         self.rewards = 0
 
