@@ -315,8 +315,7 @@ class ImprovingController(LearningController):
         return self.name
 
 
-class ImprovingInOutModel(
-    InOutModel, ImprovingController, abc.ABC):
+class ImprovingModelController(ImprovingController):
     """
     Implements from :class:`InOutModel` and :class:`ImprovingController`
     and is base class that provides improvement based learning to any
@@ -325,18 +324,18 @@ class ImprovingInOutModel(
     """
 
     def __init__(self, name='', preset=(0, 0, 0)):
-        InOutModel.__init__(self)
         ImprovingController.__init__(self, name)
+        self.model = InOutModel()
         self.current_model = preset
         self.previous_model = preset
 
     def get_string(self) -> str:
-        return get_tuple_string(self.get_model())
+        return get_tuple_string(self.model.get_model())
 
     def explore(self) -> None:
         self.current_model = mutate_io_model(
             self.current_model, self.previous_model)
-        self.set_model(self.current_model)
+        self.model.set_model(self.current_model)
 
     def reflect(self) -> None:
         previous_rewards = self.previous_rewards
@@ -358,37 +357,43 @@ class ImprovingInOutModel(
             self.previous_rewards = previous_rewards
             self.current_model = self.previous_model
 
-        self.set_model(self.current_model)
+        self.model.set_model(self.current_model)
         self.current_rewards = []
 
+    def reward(self, reward: float) -> None:
+        super().reward(reward)
 
-class ImprovingPIDModel(ImprovingInOutModel, PIDModel):
+    def reset(self) -> None:
+        self.model.reset()
+
+
+class ImprovingPIDModel(ImprovingModelController):
     """
-    Implements from :class:`ImprovingInOutModel` and :class:`PIDModel`
+    Implements from :class:`ImprovingModelController` and :class:`PIDModel`
     and uses reward based calculations to
     decide whether improvements have been made.
     """
 
     def __init__(self, name='', preset=(0, 0, 0)):
-        ImprovingInOutModel.__init__(self, name, preset)
-        PIDModel.__init__(self, preset)
+        ImprovingModelController.__init__(self, name, preset)
+        self.model = PIDModel(preset)
 
     def explore(self) -> None:
         self.current_model = mutate_io_model(
             self.current_model, self.previous_model, 'pid')
-        self.set_model(self.current_model)
+        self.model.set_model(self.current_model)
 
 
-class ImprovingNodeModel(ImprovingInOutModel, NodeModel):
+class ImprovingNodeModel(ImprovingModelController):
     """
-    Implements from :class:`ImprovingInOutModel` and :class:`NodeModel`
+    Implements from :class:`ImprovingModelController` and :class:`NodeModel`
     and uses reward based calculations to
     decide whether improvements have been made.
     """
 
     def __init__(self, name='', preset=None):
-        ImprovingInOutModel.__init__(self, name, preset)
-        NodeModel.__init__(self, preset)
+        ImprovingModelController.__init__(self, name, preset)
+        self.model = NodeModel(preset)
         if preset is None:
             raise ValueError('Please provide a preset')
 

@@ -63,6 +63,10 @@ manager.add_controller(pid_cart)
 manager.add_controller(pid_point)
 manager.add_controller(node_cart)
 manager.add_controller(node_point)
+pid_cart = pid_cart.model
+pid_point = pid_point.model
+node_cart = node_cart.model
+node_point = node_point.model
 
 
 def main():

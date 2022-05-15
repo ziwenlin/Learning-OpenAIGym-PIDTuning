@@ -96,6 +96,12 @@ manager.add_controller(pid_point)
 manager.add_controller(node_cart)
 manager.add_controller(node_pole)
 manager.add_controller(node_point)
+pid_pole = pid_pole.model
+pid_cart = pid_cart.model
+pid_point = pid_point.model
+node_pole = node_pole.model
+node_cart = node_cart.model
+node_point = node_point.model
 
 
 def main():
