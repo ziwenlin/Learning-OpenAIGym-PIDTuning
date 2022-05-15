@@ -25,14 +25,14 @@ class CartPole(controllers.EnvironmentWorker):
         self.position = 2 * self.difficulty
 
     def get_action(self, observation: gym.core.ObsType) -> gym.core.ActType:
-        output = self.difficulty
+        output = 0
         position = pid_point.get_output((node_point.get_output(observation, 0),), self.position)
         output += pid_pole.get_output((node_pole.get_output(observation, 0),), 0.0)
         output += pid_cart.get_output((node_cart.get_output(observation, 0),), position)
         return action_space(output)
 
     def get_reward(self, observation: gym.core.ObsType) -> float:
-        reward = 0
+        reward = abs(self.difficulty)
         cart_x, cart_v, pole_p, pole_v = observation
         if manager.name in ('PID_POLE', 'NODE_POLE'):
             reward -= abs(pole_p * 0.80) ** 0.5
