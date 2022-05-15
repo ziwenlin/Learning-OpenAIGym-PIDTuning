@@ -1,7 +1,8 @@
+import abc
 import statistics
 import textwrap
 import time
-import abc
+import traceback
 
 import gym
 import numpy as np
@@ -588,7 +589,7 @@ class EnvironmentManager:
         episode = self.episode
         frame_time = time.time()
         if frame_time > self.fps_time:
-            self.fps_time = frame_time + 0.2
+            self.fps_time = frame_time + 0.1
             self.env.render()
         observation = self.env.reset()
         self.worker.reset()
@@ -648,6 +649,7 @@ class EnvironmentManager:
                 self.step_episode()
                 self.step_end()
             except KeyboardInterrupt:
+                print(traceback.format_exc())
                 break
         self.stop()
 
