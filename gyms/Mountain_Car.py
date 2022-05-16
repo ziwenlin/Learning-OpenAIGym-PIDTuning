@@ -1,6 +1,7 @@
 import gym
 
 import controllers
+import genetics
 import settings
 
 
@@ -77,6 +78,21 @@ def generate_improving_model():
     pid_point = pid_point.model
     node_cart = node_cart.model
     node_point = node_point.model
+
+
+def generate_genetic_model():
+    global manager, pid_cart, pid_point, node_cart, node_point
+    pid_cart = controllers.PIDModel(PID_CART)
+    pid_point = controllers.PIDModel(PID_POINT)
+    node_cart = controllers.NodeModel(NODE_CART)
+    node_point = controllers.NodeModel(NODE_POINT)
+    manager = genetics.GeneticEvolutionController()
+    manager.add_controller(pid_cart)
+    manager.add_controller(pid_point)
+    manager.add_controller(node_cart)
+    manager.add_controller(node_point)
+    manager.resize_genetic_population(20)
+
 
 def main():
     generate_genetic_model()
