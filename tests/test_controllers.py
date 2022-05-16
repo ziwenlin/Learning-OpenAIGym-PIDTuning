@@ -538,3 +538,20 @@ class TestMutations(TestCase):
             result = mutations.mutate_io_model((0, 1), (0, 0))
         self.assertNotEqual(0, result[0])
         self.assertEqual(1, result[1])
+
+    def test_mutate_io_model_is_different_on_randomness_(self):
+        with mock.patch('numpy.random.rand', lambda: 0.0):
+            result = mutations.mutate_io_model((1, 0), (0, 0))
+        self.assertNotEqual(0, result[1])
+        self.assertEqual(1, result[0])
+
+    def test_mutate_io_model_made_change_with_improvement(self):
+        with mock.patch('numpy.random.rand', lambda: 1.0):
+            result = mutations.mutate_io_model((1, 0), (0, 0))
+        self.assertEqual(1.8, result[0])
+        self.assertEqual(0, result[1])
+
+    def test_mutate_io_mode_made_change_without_improvement(self):
+        with mock.patch('numpy.random.rand', lambda: 1.0):
+            result = mutations.mutate_io_model((0, 0), (0, 0))
+        self.assertNotEqual((0, 0), result)
