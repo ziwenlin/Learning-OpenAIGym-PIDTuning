@@ -576,6 +576,10 @@ class EnvironmentMonitor:
         mean_i = get_index_closest(mean_value, division_rewards)
 
         def get_result(category):
+            if category not in division[0]:
+                # Prevent key error of categories
+                # which do not exist in division
+                return
             result[category] = {
                 'highest': division[highest_i][category],
                 'average': division[mean_i][category],
