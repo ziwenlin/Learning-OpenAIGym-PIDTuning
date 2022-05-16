@@ -533,10 +533,8 @@ class TestMutations(TestCase):
         result = mutations.mutate_io_model((0, 0), (0, 0))
         self.assertEqual(tuple, type(result))
 
-    def test_get_control_mutated_improvement_is_different(self):
-        result = mutations.mutate_io_model((0, 0), (0, 0))
-        if result[0] == 0:
-            self.assertNotEqual(0.0, result[1])
-        else:
-            self.assertNotEqual(0, result[0])
-            self.assertEqual(0, result[1])
+    def test_mutate_io_model_is_different_on_randomness(self):
+        with mock.patch('numpy.random.rand', lambda: 0.0):
+            result = mutations.mutate_io_model((0, 1), (0, 0))
+        self.assertNotEqual(0, result[0])
+        self.assertEqual(1, result[1])
