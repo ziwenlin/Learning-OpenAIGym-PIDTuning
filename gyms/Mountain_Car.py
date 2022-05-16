@@ -1,4 +1,5 @@
 import gym
+
 import controllers
 import settings
 
@@ -50,26 +51,35 @@ PID_CART = (0, 0, 0)
 # PID_CART = (-1.2978, -0.0252, -0.8364)
 # PID_CART = (-1.8086, -0.0327, -0.7587)
 PID_POINT = (0, 0, 0)
-
 NODE_CART = (0, 0)
 NODE_POINT = (0, 0)
 
-pid_cart = controllers.ImprovingPIDModel('PID_CART', PID_CART)
-pid_point = controllers.ImprovingPIDModel('PID_POINT', PID_POINT)
-node_cart = controllers.ImprovingNodeModel('NODE_CART', NODE_CART)
-node_point = controllers.ImprovingNodeModel('NODE_POINT', NODE_POINT)
-manager = controllers.ImprovingControllerManager()
-manager.add_controller(pid_cart)
-manager.add_controller(pid_point)
-manager.add_controller(node_cart)
-manager.add_controller(node_point)
-pid_cart = pid_cart.model
-pid_point = pid_point.model
-node_cart = node_cart.model
-node_point = node_point.model
+pid_cart: controllers.InOutModel
+pid_point: controllers.InOutModel
+node_cart: controllers.InOutModel
+node_point: controllers.InOutModel
+manager: controllers.BaseManager | \
+         controllers.LearningController
 
+
+def generate_improving_model():
+    global manager, pid_cart, pid_point, node_cart, node_point
+    pid_cart = controllers.ImprovingPIDModel('PID_CART', PID_CART)
+    pid_point = controllers.ImprovingPIDModel('PID_POINT', PID_POINT)
+    node_cart = controllers.ImprovingNodeModel('NODE_CART', NODE_CART)
+    node_point = controllers.ImprovingNodeModel('NODE_POINT', NODE_POINT)
+    manager = controllers.ImprovingControllerManager()
+    manager.add_controller(pid_cart)
+    manager.add_controller(pid_point)
+    manager.add_controller(node_cart)
+    manager.add_controller(node_point)
+    pid_cart = pid_cart.model
+    pid_point = pid_point.model
+    node_cart = node_cart.model
+    node_point = node_point.model
 
 def main():
+    generate_genetic_model()
     env = gym.make('MountainCar-v0')
     environment = controllers.EnvironmentManager(env, manager, MountainCar(env))
 

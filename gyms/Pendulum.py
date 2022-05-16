@@ -43,28 +43,42 @@ NODE_POINT = (0, 0, 0)
 NODE_PENDULUM = (0, 0, 0)
 NODE_DIRECT = (0, 0, 0)
 
-pid_point = controllers.ImprovingPIDModel('PID_POINT', PID_POINT)
-pid_pendulum = controllers.ImprovingPIDModel('PID_PENDULUM', PID_PENDULUM)
-pid_direct = controllers.ImprovingPIDModel('PID_DIRECT', PID_DIRECT)
-node_point = controllers.ImprovingNodeModel('NODE_POINT', NODE_POINT)
-node_pendulum = controllers.ImprovingNodeModel('NODE_PENDULUM', NODE_PENDULUM)
-node_direct = controllers.ImprovingNodeModel('NODE_DIRECT', NODE_DIRECT)
-manager = controllers.ImprovingControllerManager()
-manager.add_controller(pid_direct)
-manager.add_controller(pid_pendulum)
-manager.add_controller(pid_point)
-manager.add_controller(node_direct)
-manager.add_controller(node_pendulum)
-manager.add_controller(node_point)
-pid_pendulum = node_pendulum.model
-pid_direct = node_direct.model
-pid_point = pid_point.model
-node_pendulum = node_pendulum.model
-node_direct = node_direct.model
-node_point = node_point.model
+pid_point: controllers.InOutModel
+pid_direct: controllers.InOutModel
+pid_pendulum: controllers.InOutModel
+node_point: controllers.InOutModel
+node_direct: controllers.InOutModel
+node_pendulum: controllers.InOutModel
+manager: controllers.BaseManager | \
+         controllers.LearningController
+
+
+def generate_improving_model():
+    global manager, pid_point, node_point
+    global pid_pendulum, pid_direct, node_pendulum, node_direct
+    pid_point = controllers.ImprovingPIDModel('PID_POINT', PID_POINT)
+    pid_pendulum = controllers.ImprovingPIDModel('PID_PENDULUM', PID_PENDULUM)
+    pid_direct = controllers.ImprovingPIDModel('PID_DIRECT', PID_DIRECT)
+    node_point = controllers.ImprovingNodeModel('NODE_POINT', NODE_POINT)
+    node_pendulum = controllers.ImprovingNodeModel('NODE_PENDULUM', NODE_PENDULUM)
+    node_direct = controllers.ImprovingNodeModel('NODE_DIRECT', NODE_DIRECT)
+    manager = controllers.ImprovingControllerManager()
+    manager.add_controller(pid_direct)
+    manager.add_controller(pid_pendulum)
+    manager.add_controller(pid_point)
+    manager.add_controller(node_direct)
+    manager.add_controller(node_pendulum)
+    manager.add_controller(node_point)
+    pid_pendulum = node_pendulum.model
+    pid_direct = node_direct.model
+    pid_point = pid_point.model
+    node_pendulum = node_pendulum.model
+    node_direct = node_direct.model
+    node_point = node_point.model
 
 
 def main():
+    generate_improving_model()
     env = gym.make('Pendulum-v1')
     environment = controllers.EnvironmentManager(env, manager, Pendulum(env))
 
