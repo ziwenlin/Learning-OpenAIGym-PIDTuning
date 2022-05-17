@@ -42,15 +42,15 @@ After that you can run any of the scripts inside gyms by doing:
 Commands for Windows:
 
 ```
-python gyms/Cart_Pole.py
-python gyms/Mountain_Car.py
-python gyms/Pendulum.py
+python Cart_Pole.py
+python Mountain_Car.py
+python Pendulum.py
 ```
 
 Commands for Unix/macOS:
 
 ```
-python3 gyms/Cart_Pole.py
-python3 gyms/Mountain_Car.py
-python3 gyms/Pendulum.py
+python3 Cart_Pole.py
+python3 Mountain_Car.py
+python3 Pendulum.py
 ```
