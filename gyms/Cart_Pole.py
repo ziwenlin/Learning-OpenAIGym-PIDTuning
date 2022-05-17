@@ -33,15 +33,15 @@ class CartPole(controllers.EnvironmentWorker):
 
     def get_reward(self, observation: gym.core.ObsType) -> float:
         reward = abs(self.difficulty)
-        cart_x, cart_v, pole_p, pole_v = observation
+        cart_p, cart_v, pole_p, pole_v = observation
         if manager.name in ('PID_POLE', 'NODE_POLE'):
             reward -= abs(pole_p * 0.80) ** 0.5
         elif manager.name in ('PID_CART', 'NODE_CART'):
-            reward -= abs(cart_v - self.position) ** 0.5
+            reward -= abs(cart_p - self.position) ** 0.5
         elif manager.name in ('PID_POINT', 'NODE_POINT'):
-            reward -= abs(cart_v - self.position) ** 0.5
+            reward -= abs(cart_p - self.position) ** 0.5
         else:
-            reward -= abs(cart_v - self.position) ** 0.5
+            reward -= abs(cart_p - self.position) ** 0.5
             reward -= abs(pole_p * 0.80) ** 0.5
         return reward
 
