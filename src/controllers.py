@@ -647,20 +647,21 @@ class EnvironmentManager:
 
     def step_episode(self):
         episode = self.episode
-        time_steps, done = 0, False
+        time_steps, rewards, done = 1, 0, False
         observation = self.env.reset()
         self.worker.reset()
         self.agent.reset()
         while not done:
-            if episode % settings.EPISODE_SHOW == 1:
+            if self.episode % settings.EPISODE_SHOW == 1:
                 self.env.render()
 
             action = self.worker.get_action(observation)
             observation, reward, done, info = self.env.step(action)
             reward += self.worker.get_reward(observation)
+            rewards += reward
 
-            self.rewards += reward
-            if time_steps + 1 == settings.TIME_STEPS:
+            time_steps += 1
+            if time_steps == settings.TIME_STEPS:
                 # Never set done to True
                 # But breaking the while loop is fine
                 break
@@ -669,8 +670,9 @@ class EnvironmentManager:
         elif (episode % settings.EPISODE_PRINT == 0
               or episode % settings.EPISODE_SHOW == 0):
             print("Episode {} finished after {} time steps"
-                  .format(episode, time_steps + 1))
-        self.time_steps = time_steps + 1
+                  .format(episode, time_steps))
+        self.time_steps = time_steps
+        self.rewards = rewards
 
     def step_end(self):
         episode = self.episode
@@ -682,7 +684,6 @@ class EnvironmentManager:
             'difficulty': self.worker.difficulty,
             'steps': self.time_steps,
         })
-        self.rewards = 0
 
         if episode % settings.EPISODE_LEARN == 0:
             self.logger.process(episode)
