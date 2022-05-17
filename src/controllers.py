@@ -644,11 +644,11 @@ class EnvironmentManager:
         if frame_time > self.fps_time:
             self.fps_time = frame_time + 0.1
             self.env.render()
-        time_steps = 0
+        time_steps, done = 0, False
         observation = self.env.reset()
         self.worker.reset()
         self.agent.reset()
-        for time_steps in range(settings.TIME_STEPS):
+        while not done:
             if episode % settings.EPISODE_SHOW == 1:
                 self.env.render()
 
@@ -657,14 +657,16 @@ class EnvironmentManager:
             reward += self.worker.get_reward(observation)
 
             self.rewards += reward
-            if done or time_steps + 1 == settings.TIME_STEPS:
-                if not settings.EPISODE_PRINT_TOGGLE:
-                    pass
-                elif episode % settings.EPISODE_PRINT == 0 or \
-                        episode % settings.EPISODE_SHOW == 0:
-                    print("Episode {} finished after {} time steps"
-                          .format(episode, time_steps + 1))
+            if time_steps + 1 == settings.TIME_STEPS:
+                # Never set done to True
+                # But breaking the while loop is fine
                 break
+        if not settings.EPISODE_PRINT_TOGGLE:
+            pass
+        elif (episode % settings.EPISODE_PRINT == 0
+              or episode % settings.EPISODE_SHOW == 0):
+            print("Episode {} finished after {} time steps"
+                  .format(episode, time_steps + 1))
         self.time_steps = time_steps + 1
 
     def step_end(self):
