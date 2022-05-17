@@ -646,6 +646,10 @@ class EnvironmentManager:
               or episode % settings.EPISODE_SHOW == 0):
             print("Episode {} finished after {} time steps"
                   .format(episode, time_steps))
+        if episode % settings.EPISODE_SHOW == 0:
+            log = self.logger.get_log()
+            log += f'{self.agent.name} = {self.agent.get_string()}'
+            print(log, '\n')
 
     def step_frame(self):
         frame_time = time.time()
@@ -696,11 +700,6 @@ class EnvironmentManager:
             settings.MULTIPLIER_EPSILON *= settings.EPSILON_DECAY_RATE
         if settings.EPSILON > settings.EPSILON_CAP:
             settings.EPSILON *= settings.EPSILON_DECAY_RATE
-
-        if episode % settings.EPISODE_SHOW == 0:
-            log = self.logger.get_log()
-            log += f'{self.agent.name} = {self.agent.get_string()}' + '\n'
-            print(log)
 
         if episode > settings.EPISODE_CAP:
             self.stop()
