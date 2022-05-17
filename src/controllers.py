@@ -638,12 +638,15 @@ class EnvironmentManager:
         self.running = False
         self.env.close()
 
+    def step_frame(self):
+        frame_time = time.time()
+        if frame_time < self.fps_time:
+            return
+        self.fps_time = frame_time + 0.1
+        self.env.render()
+
     def step_episode(self):
         episode = self.episode
-        frame_time = time.time()
-        if frame_time > self.fps_time:
-            self.fps_time = frame_time + 0.1
-            self.env.render()
         time_steps, done = 0, False
         observation = self.env.reset()
         self.worker.reset()
@@ -705,6 +708,7 @@ class EnvironmentManager:
         while self.running:
             try:
                 self.step_episode()
+                self.step_frame()
                 self.step_end()
             except KeyboardInterrupt:
                 print(traceback.format_exc())
