@@ -638,6 +638,15 @@ class EnvironmentManager:
         self.running = False
         self.env.close()
 
+    def step_print(self):
+        episode, time_steps = self.episode, self.time_steps
+        if not settings.EPISODE_PRINT_TOGGLE:
+            pass
+        elif (episode % settings.EPISODE_PRINT == 0
+              or episode % settings.EPISODE_SHOW == 0):
+            print("Episode {} finished after {} time steps"
+                  .format(episode, time_steps))
+
     def step_frame(self):
         frame_time = time.time()
         if frame_time < self.fps_time:
@@ -646,7 +655,6 @@ class EnvironmentManager:
         self.env.render()
 
     def step_episode(self):
-        episode = self.episode
         time_steps, rewards, done = 1, 0, False
         observation = self.env.reset()
         self.worker.reset()
@@ -665,12 +673,6 @@ class EnvironmentManager:
                 # Never set done to True
                 # But breaking the while loop is fine
                 break
-        if not settings.EPISODE_PRINT_TOGGLE:
-            pass
-        elif (episode % settings.EPISODE_PRINT == 0
-              or episode % settings.EPISODE_SHOW == 0):
-            print("Episode {} finished after {} time steps"
-                  .format(episode, time_steps))
         self.time_steps = time_steps
         self.rewards = rewards
 
@@ -710,6 +712,7 @@ class EnvironmentManager:
             try:
                 self.step_episode()
                 self.step_frame()
+                self.step_print()
                 self.step_end()
             except KeyboardInterrupt:
                 print(traceback.format_exc())
