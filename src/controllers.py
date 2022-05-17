@@ -638,6 +638,14 @@ class EnvironmentManager:
         self.running = False
         self.env.close()
 
+    def step_monitor(self):
+        self.logger.monitor({
+            'episode': self.episode,
+            'reward': self.rewards,
+            'difficulty': self.worker.difficulty,
+            'steps': self.time_steps,
+        })
+
     def step_print(self):
         episode, time_steps = self.episode, self.time_steps
         if not settings.EPISODE_PRINT_TOGGLE:
@@ -684,12 +692,6 @@ class EnvironmentManager:
         episode = self.episode
 
         self.agent.reward(self.rewards)
-        self.logger.monitor({
-            'episode': episode,
-            'reward': self.rewards,
-            'difficulty': self.worker.difficulty,
-            'steps': self.time_steps,
-        })
 
         if episode % settings.EPISODE_LEARN == 0:
             self.logger.process(episode)
@@ -712,6 +714,7 @@ class EnvironmentManager:
                 self.step_episode()
                 self.step_frame()
                 self.step_print()
+                self.step_monitor()
                 self.step_end()
             except KeyboardInterrupt:
                 print(traceback.format_exc())
