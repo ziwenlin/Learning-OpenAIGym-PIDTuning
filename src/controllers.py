@@ -695,15 +695,12 @@ class EnvironmentManager:
 
             time_steps += 1
             if time_steps == settings.TIME_STEPS:
-                # Never set done to True
-                # But breaking the while loop is fine
                 break
         self.time_steps = time_steps
         self.rewards = rewards
 
     def step_end(self):
-        episode = self.episode
-        if episode > settings.EPISODE_CAP:
+        if self.episode > settings.EPISODE_CAP:
             self.stop()
         self.episode += 1
 
