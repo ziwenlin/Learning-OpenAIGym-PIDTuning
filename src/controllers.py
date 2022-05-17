@@ -638,6 +638,12 @@ class EnvironmentManager:
         self.running = False
         self.env.close()
 
+    def step_epsilon(self):
+        if settings.MULTIPLIER_EPSILON > settings.EPSILON_CAP:
+            settings.MULTIPLIER_EPSILON *= settings.EPSILON_DECAY_RATE
+        if settings.EPSILON > settings.EPSILON_CAP:
+            settings.EPSILON *= settings.EPSILON_DECAY_RATE
+
     def step_monitor(self):
         self.logger.monitor({
             'episode': self.episode,
@@ -698,11 +704,6 @@ class EnvironmentManager:
             self.agent.reflect()
             self.agent.explore()
 
-        if settings.MULTIPLIER_EPSILON > settings.EPSILON_CAP:
-            settings.MULTIPLIER_EPSILON *= settings.EPSILON_DECAY_RATE
-        if settings.EPSILON > settings.EPSILON_CAP:
-            settings.EPSILON *= settings.EPSILON_DECAY_RATE
-
         if episode > settings.EPISODE_CAP:
             self.stop()
         self.episode += 1
@@ -716,6 +717,7 @@ class EnvironmentManager:
                 self.step_print()
                 self.step_monitor()
                 self.step_end()
+                self.step_epsilon()
             except KeyboardInterrupt:
                 print(traceback.format_exc())
                 break
