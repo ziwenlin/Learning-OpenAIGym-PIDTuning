@@ -672,6 +672,13 @@ class EnvironmentManager:
         self.fps_time = frame_time + 0.1
         self.env.render()
 
+    def step_agent(self):
+        self.agent.reward(self.rewards)
+        if self.episode % settings.EPISODE_LEARN == 0:
+            self.logger.process(self.episode)
+            self.agent.reflect()
+            self.agent.explore()
+
     def step_episode(self):
         time_steps, rewards, done = 1, 0, False
         observation = self.env.reset()
@@ -696,14 +703,6 @@ class EnvironmentManager:
 
     def step_end(self):
         episode = self.episode
-
-        self.agent.reward(self.rewards)
-
-        if episode % settings.EPISODE_LEARN == 0:
-            self.logger.process(episode)
-            self.agent.reflect()
-            self.agent.explore()
-
         if episode > settings.EPISODE_CAP:
             self.stop()
         self.episode += 1
@@ -716,6 +715,7 @@ class EnvironmentManager:
                 self.step_frame()
                 self.step_print()
                 self.step_monitor()
+                self.step_agent()
                 self.step_end()
                 self.step_epsilon()
             except KeyboardInterrupt:
