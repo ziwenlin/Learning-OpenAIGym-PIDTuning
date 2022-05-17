@@ -710,9 +710,9 @@ class EnvironmentManager:
             try:
                 self.step_episode()
                 self.step_frame()
-                self.step_print()
                 self.step_monitor()
                 self.step_agent()
+                self.step_print()
                 self.step_end()
                 self.step_epsilon()
             except KeyboardInterrupt:
