@@ -26,12 +26,13 @@ class MountainCar(controllers.EnvironmentWorker):
         position, speed = observation
         if manager.name in ('PID_CART'):
             reward += abs(speed) ** 0.5
-            reward += abs(position - 0.5) ** 0.5
-        elif manager.name in ('PID_POINT', 'NODE_POINT', 'NODE_CART'):
-            reward += abs(speed) ** 0.5
             reward -= abs(position - 0.5) ** 0.5
-        # reward -= abs(observation[0] - 0.50)
-        # reward += abs(observation[1] * 100)
+        elif manager.name in ('PID_POINT', 'NODE_POINT', 'NODE_CART'):
+            reward += abs(speed) ** 0.2
+            reward -= abs(position - 0.5) ** 0.5
+        else:
+            reward += abs(speed) ** 0.5
+            reward -= abs(position - 0.5) ** 0.3
         return reward
 
 
