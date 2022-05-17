@@ -1,8 +1,8 @@
 import numpy
 
-import settings
+from src import settings
 
-import controllers
+from src import controllers
 
 
 def mutate_io_model(current, previous, io_type=''):

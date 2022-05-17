@@ -1,8 +1,8 @@
 import gym
 
-import controllers
-import genetics
-import settings
+from src import controllers
+from src import genetics
+from src import settings
 
 
 class MountainCar(controllers.EnvironmentWorker):

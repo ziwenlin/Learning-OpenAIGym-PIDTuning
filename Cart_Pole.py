@@ -1,8 +1,8 @@
 import gym
 import numpy.random
 
-import settings
-import controllers
+from src import settings
+from src import controllers
 
 
 class CartPole(controllers.EnvironmentWorker):

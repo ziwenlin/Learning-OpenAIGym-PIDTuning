@@ -1,7 +1,7 @@
 from unittest import TestCase, mock
 
-import controllers
-import mutations
+from src import controllers
+from src import mutations
 
 NAME = 'TEST'
 PID = (10, 0.1, 2)

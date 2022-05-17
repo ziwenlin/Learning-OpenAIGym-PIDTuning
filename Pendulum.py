@@ -1,7 +1,7 @@
 import gym
 
-import controllers
-import settings
+from src import controllers
+from src import settings
 
 
 class Pendulum(controllers.EnvironmentWorker):

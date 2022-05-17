@@ -1,7 +1,7 @@
 from unittest import TestCase
 
-import controllers
-import genetics
+from src import controllers
+from src import genetics
 
 
 class TestModelManager(TestCase):

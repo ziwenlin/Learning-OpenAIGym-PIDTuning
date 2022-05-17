@@ -8,8 +8,8 @@ import gym
 import numpy as np
 from tabulate import tabulate
 
-import settings
-from mutations import mutate_io_model
+from src import settings
+from src.mutations import mutate_io_model
 
 
 class InOutModel:
