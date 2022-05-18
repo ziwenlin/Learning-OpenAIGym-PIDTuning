@@ -1,8 +1,8 @@
-# PIDLearningAlgorithms
-Using Gym environments to practice training algorithms for PID controllers
+# PID Learning Algorithms
+Using OpenAI Gym environments to practice training algorithms for PID controllers and simple neural networks.
 
 ## Installation
-To use the code, create a virtual environment, activate it, and install the required packages.
+To use the code, create a virtual environment, activate it, and then install the required packages.
 
 Commands for Windows:
 ```
@@ -37,7 +37,7 @@ Commands for Unix/macOS:
 source env/bin/activate
 ```
 
-After that you can run any of the scripts inside gyms by doing:
+After that you can run any of the scripts inside gyms by running the following commands.
 
 Commands for Windows:
 
