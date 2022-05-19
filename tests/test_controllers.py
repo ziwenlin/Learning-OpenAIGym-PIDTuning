@@ -9,27 +9,27 @@ NODE = (0.5, 0.1, 2, 0)
 
 
 class BaseTest:
-    class InOutController(TestCase):
+    class IOModel(TestCase):
         def setUp(self) -> None:
-            self.controller = controllers.InOutModel()
+            self.model = controllers.InOutModel()
 
         def test_reset_output_is_implemented(self):
-            self.assertEqual(0, self.controller.output)
-            self.controller.output = 10
-            self.controller.reset()
-            self.assertEqual(0, self.controller.output)
+            self.assertEqual(0, self.model.output)
+            self.model.output = 10
+            self.model.reset()
+            self.assertEqual(0, self.model.output)
 
         def test_set_control_is_implemented(self):
             # This might be implemented in the future
             pass
 
         def test_get_output_is_implemented(self):
-            output = self.controller.get_output((10,), 0)
+            output = self.model.get_output((10,), 0)
             self.assertNotEqual(0, output)
-            self.assertEqual(output, self.controller.output)
+            self.assertEqual(output, self.model.output)
 
         def test_get_control_is_implemented(self):
-            control = self.controller.get_model()
+            control = self.model.get_model()
             self.assertEqual(tuple, type(control))
 
     class ImprovingController(TestCase):
@@ -92,24 +92,24 @@ class BaseTest:
             rewards = self.controller.previous_rewards
             self.assertEqual([5, 7, 9, 3, 1], rewards)
 
-    class RotatingController(TestCase):
+    class LearningControllerManager(TestCase):
         def setUp(self) -> None:
-            self.controller = controllers.LearningControllerManager()
+            self.manager = controllers.LearningControllerManager()
 
         # Todo add more tests here
         def test_next_controller_when_empty(self):
-            if len(self.controller.controllers) == 0:
+            if len(self.manager.controllers) == 0:
                 with self.assertRaises(IndexError):
-                    self.controller.next_controller()
+                    self.manager.next_controller()
 
         def test_select_controller_when_empty(self):
-            if len(self.controller.controllers) == 0:
+            if len(self.manager.controllers) == 0:
                 with self.assertRaises(IndexError):
-                    self.controller.select_controller(10)
+                    self.manager.select_controller(10)
 
         def test_add_controller_when_empty(self):
-            controller = self.controller
-            if len(self.controller.controllers) == 0:
+            controller = self.manager
+            if len(self.manager.controllers) == 0:
                 self.assertEqual(0, len(controller.controllers))
                 controller.add_controller(controllers.ImprovingPIDModel())
             self.assertEqual(1, len(controller.controllers))
@@ -119,103 +119,104 @@ class BaseTest:
 
 # class TestInOutController(TestCase):
 #     def setUp(self) -> None:
-#         self.controller = controllers.InOutController()
+#         self.model = controllers.IOModel()
 #
 #     def test_set_control(self):
 #         with self.assertRaises(NotImplementedError):
-#             self.controller.set_model(object)
+#             self.model.set_model(object)
 #
 #     def test_get_control(self):
 #         with self.assertRaises(NotImplementedError):
-#             self.controller.get_model()
+#             self.model.get_model()
 #
 #     def test_get_output(self):
 #         with self.assertRaises(NotImplementedError):
-#             self.controller.get_output(object, object)
+#             self.model.get_output(object, object)
 #
 #     def test_reset(self):
 #         with self.assertRaises(NotImplementedError):
-#             self.controller.reset()
+#             self.model.reset()
 
 
-class TestPIDController(BaseTest.InOutController):
+class TestPIDModel(BaseTest.IOModel):
     def setUp(self) -> None:
-        self.controller = controllers.PIDModel(PID)
+        self.model = controllers.PIDModel(PID)
 
     def test_set_control(self):
         pid = (5, 1, 9)
-        self.controller.set_model(pid)
-        self.assertEqual(5, self.controller.model_p)
-        self.assertEqual(1, self.controller.model_i)
-        self.assertEqual(9, self.controller.model_d)
+        self.model.set_model(pid)
+        self.assertEqual(5, self.model.model_p)
+        self.assertEqual(1, self.model.model_i)
+        self.assertEqual(9, self.model.model_d)
 
     def test_set_control_failure(self):
         pid = (1, 4, 5, 6)
         with self.assertRaises(ValueError):
-            self.controller.set_model(pid)
+            self.model.set_model(pid)
 
     def test_get_control(self):
-        pid = self.controller.get_model()
+        pid = self.model.get_model()
         self.assertEqual(PID, pid)
-        self.assertEqual(10, self.controller.model_p)
-        self.assertEqual(0.1, self.controller.model_i)
-        self.assertEqual(2, self.controller.model_d)
+        self.assertEqual(10, self.model.model_p)
+        self.assertEqual(0.1, self.model.model_i)
+        self.assertEqual(2, self.model.model_d)
 
     def test_get_output_positive(self):
         setpoint, value = 100, (10,)
-        output = self.controller.get_output(value, setpoint)
-        self.assertEqual(90, self.controller.value_i)
-        self.assertEqual(90, self.controller.value_d)
+        output = self.model.get_output(value, setpoint)
+        self.assertEqual(90, self.model.value_i)
+        self.assertEqual(90, self.model.value_d)
         self.assertEqual(900 + 9 + 180, output)
-        output = self.controller.get_output(value, setpoint)
-        self.assertEqual(180, self.controller.value_i)
-        self.assertEqual(90, self.controller.value_d)
+        output = self.model.get_output(value, setpoint)
+        self.assertEqual(180, self.model.value_i)
+        self.assertEqual(90, self.model.value_d)
         self.assertEqual(900 + 18 + 0, output)
-        output = self.controller.get_output(value, setpoint)
-        self.assertEqual(270, self.controller.value_i)
-        self.assertEqual(90, self.controller.value_d)
+        output = self.model.get_output(value, setpoint)
+        self.assertEqual(270, self.model.value_i)
+        self.assertEqual(90, self.model.value_d)
         self.assertEqual(900 + 27 + 0, output)
 
     def test_get_output_negative(self):
         setpoint, value = -10, (-1,)
-        output = self.controller.get_output(value, setpoint)
+        output = self.model.get_output(value, setpoint)
         self.assertEqual(-90 + -0.9 + -18, output)
-        output = self.controller.get_output(value, setpoint)
+        output = self.model.get_output(value, setpoint)
         self.assertEqual(-90 + -1.8 + 0, output)
-        output = self.controller.get_output(value, setpoint)
+        output = self.model.get_output(value, setpoint)
         self.assertEqual(-90 + -2.7 + 0, output)
 
     def test_reset(self):
         setpoint, value = 100, (10,)
-        self.controller.get_output(value, setpoint)
-        self.assertEqual(90, self.controller.value_i)
-        self.assertEqual(90, self.controller.value_d)
-        self.controller.reset()
-        self.assertEqual(0, self.controller.value_i)
-        self.assertEqual(0, self.controller.value_d)
+        self.model.get_output(value, setpoint)
+        self.assertEqual(90, self.model.value_i)
+        self.assertEqual(90, self.model.value_d)
+        self.model.reset()
+        self.assertEqual(0, self.model.value_i)
+        self.assertEqual(0, self.model.value_d)
 
 
-class TestNodeController(BaseTest.InOutController):
+class TestNodeModel(BaseTest.IOModel):
     def setUp(self) -> None:
-        self.controller = controllers.NodeModel(NODE)
+        self.model = controllers.NodeModel(NODE)
 
     def test_set_control(self):
-        self.controller.set_model((0, 1, 2, 3))
-        self.assertEqual((0, 1, 2, 3), self.controller.control)
+        self.model.set_model((0, 1, 2, 3))
+        self.assertEqual((0, 1, 2, 3), self.model.control)
 
     def test_get_control(self):
-        control = self.controller.get_model()
+        control = self.model.get_model()
         self.assertEqual((0.5, 0.1, 2, 0), control)
 
     def test_get_output(self):
-        output = self.controller.get_output((0, 10, -2, 1), 0)
+        output = self.model.get_output((0, 10, -2, 1), 0)
         self.assertEqual(0 + 1 + -4 + 0, output)
 
 
-class TestImprovingInOutController(BaseTest.ImprovingController):
+class TestImprovingController(BaseTest.ImprovingController):
     def setUp(self) -> None:
-        # Using PID because the following tests need an implemented controller
-        self.controller = controllers.ImprovingNodeModel(preset=(0, 0, 0))
+        # Using NodeModel because the following tests need an implemented model
+        self.controller = controllers.ImprovingModelController()
+        self.controller.model = controllers.NodeModel(preset=(0, 0, 0))
 
     def test_get_string(self):
         text = self.controller.get_string()
@@ -250,9 +251,10 @@ class TestImprovingInOutController(BaseTest.ImprovingController):
         self.assertEqual((1, 2, 3), self.controller.previous_model)
 
 
-class TestLearningNodeController(BaseTest.ImprovingController):
+class TestImprovingNodeModel(BaseTest.ImprovingController):
     def setUp(self) -> None:
-        self.controller = controllers.ImprovingNodeModel(NAME, NODE)
+        self.controller = controllers.ImprovingModelController(NAME)
+        self.controller.model = controllers.NodeModel(NODE)
 
     def test_init_none_preset(self):
         with self.assertRaises(ValueError):
@@ -263,7 +265,7 @@ class TestLearningNodeController(BaseTest.ImprovingController):
         self.assertEqual('(0.5, 0.1, 2, 0)', text)
 
 
-class TestLearningPIDController(BaseTest.ImprovingController):
+class TestImprovingPIDModel(BaseTest.ImprovingController):
     def setUp(self) -> None:
         self.controller = controllers.ImprovingPIDModel(NAME, PID)
 
@@ -272,28 +274,29 @@ class TestLearningPIDController(BaseTest.ImprovingController):
         self.assertEqual('(10, 0.1, 2)', text)
 
 
-class TestRotatingImprovingController(BaseTest.ImprovingController,
-                                      BaseTest.RotatingController):
+class TestImprovingControllerManager(BaseTest.ImprovingController,
+                                     BaseTest.LearningControllerManager):
     # Todo add more tests here
     def setUp(self) -> None:
-        self.controller = controllers.ImprovingControllerManager()
-        self.controller.add_controller(controllers.ImprovingPIDModel())
+        self.manager = controllers.ImprovingControllerManager()
+        self.manager.add_controller(controllers.ImprovingPIDModel())
+        self.controller = self.manager
 
     def test_reflect_is_counting(self):
-        self.assertEqual(0, self.controller.count)
-        self.controller.reflect()
-        self.assertEqual(1, self.controller.count)
+        self.assertEqual(0, self.manager.count)
+        self.manager.reflect()
+        self.assertEqual(1, self.manager.count)
 
     def test_reflect_trigger_next(self):
-        self.controller.count = 8
-        self.controller.reflect()
-        self.assertFalse(self.controller.is_next)
-        self.controller.reflect()
-        self.assertEqual(10, self.controller.count)
-        self.assertTrue(self.controller.is_next)
-        self.controller.reflect()
-        self.assertEqual(11, self.controller.count)
-        self.assertTrue(self.controller.is_next)
+        self.manager.count = 8
+        self.manager.reflect()
+        self.assertFalse(self.manager.is_next)
+        self.manager.reflect()
+        self.assertEqual(10, self.manager.count)
+        self.assertTrue(self.manager.is_next)
+        self.manager.reflect()
+        self.assertEqual(11, self.manager.count)
+        self.assertTrue(self.manager.is_next)
 
 
 class TestEnvironmentMonitor(TestCase):
@@ -399,7 +402,7 @@ class TestEnvironmentMonitorResults(TestCase):
         self.assertEqual(9, result['episode']['average'])
 
 
-class Test(TestCase):
+class TestModuleFunctions(TestCase):
     def test_get_improvement_positive_not_zero(self):
         result = controllers.get_improvement_gain(10, 1)
         self.assertEqual(10, result)
