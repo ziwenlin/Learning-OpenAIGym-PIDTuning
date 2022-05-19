@@ -324,7 +324,7 @@ class TestEnvironmentMonitor(TestCase):
     def test_process_result_ep(self):
         self.monitor.process(3)
         result = self.monitor.results[0]
-        self.assertEqual(3, result['division'])
+        self.assertEqual(3, result['episodes'])
 
     def test_process_result_episode_is_int(self):
         self.monitor.process(3)
@@ -337,8 +337,8 @@ class TestEnvironmentMonitor(TestCase):
 
     def test_get_log_output(self):
         self.monitor.process(3)
-        test = """
-|   division |   highest |   average |   lowest |   median |   middle |   epsilon |   multiplier |
+        reference = """
+|   episodes |   highest |   average |   lowest |   median |   middle |   epsilon |   multiplier |
 |------------|-----------|-----------|----------|----------|----------|-----------|--------------|
 |          3 |        12 |        10 |        8 |       10 |       10 |       0.9 |           10 |
 
@@ -349,7 +349,7 @@ class TestEnvironmentMonitor(TestCase):
 | episode    |       2   |       1   |      3   |      1   |      1   |
 """
         compare = self.monitor.get_log()
-        self.assertEqual(test, compare)
+        self.assertEqual(reference, compare)
 
 
 class TestEnvironmentMonitorResults(TestCase):

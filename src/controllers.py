@@ -599,7 +599,7 @@ class EnvironmentMonitor:
         get_result('difficulty')
         get_result('episode')
 
-        result['division'] = episode
+        result['episodes'] = episode
         result['highest'] = round(highest_value, 2)
         result['average'] = round(mean_value, 2)
         result['lowest'] = round(lowest_value, 2)
@@ -709,7 +709,6 @@ class EnvironmentManager:
             observation, reward, done, info = self.env.step(action)
             reward += self.worker.get_reward(observation)
             rewards += reward
-
             time_steps += 1
             if time_steps == settings.TIME_STEPS:
                 break
