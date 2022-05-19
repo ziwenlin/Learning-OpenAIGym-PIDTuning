@@ -724,18 +724,21 @@ class EnvironmentManager:
         self.start()
         while self.running:
             try:
-                self.step_render()
-                self.step_episode()
-                self.step_frame()
-                self.step_monitor()
-                self.step_agent()
-                self.step_print()
-                self.step_end()
-                self.step_epsilon()
+                self.run_sequence()
             except KeyboardInterrupt:
                 print(traceback.format_exc())
                 break
         self.stop()
+
+    def run_sequence(self):
+        self.step_render()
+        self.step_episode()
+        self.step_frame()
+        self.step_monitor()
+        self.step_agent()
+        self.step_print()
+        self.step_end()
+        self.step_epsilon()
 
     def run_once(self):
         self.episode = 1
