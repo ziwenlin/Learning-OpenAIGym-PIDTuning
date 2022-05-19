@@ -679,15 +679,32 @@ class EnvironmentManager:
             self.agent.reflect()
             self.agent.explore()
 
+    def step_render(self):
+        if self.episode % settings.EPISODE_SHOW != 1:
+            return
+        # Get best episode to show
+        time_steps, rewards, done = 1, 0, False
+        observation = self.env.reset()
+        self.worker.reset()
+        self.agent.reset()
+        while not done:
+            self.env.render()
+            action = self.worker.get_action(observation)
+            observation, reward, done, info = self.env.step(action)
+            reward += self.worker.get_reward(observation)
+            rewards += reward
+            time_steps += 1
+            if time_steps == settings.TIME_STEPS:
+                break
+        self.time_steps = time_steps
+        self.rewards = rewards
+
     def step_episode(self):
         time_steps, rewards, done = 1, 0, False
         observation = self.env.reset()
         self.worker.reset()
         self.agent.reset()
         while not done:
-            if self.episode % settings.EPISODE_SHOW == 1:
-                self.env.render()
-
             action = self.worker.get_action(observation)
             observation, reward, done, info = self.env.step(action)
             reward += self.worker.get_reward(observation)
@@ -708,6 +725,7 @@ class EnvironmentManager:
         self.start()
         while self.running:
             try:
+                self.step_render()
                 self.step_episode()
                 self.step_frame()
                 self.step_monitor()
@@ -721,19 +739,11 @@ class EnvironmentManager:
         self.stop()
 
     def run_once(self):
-        observation = self.env.reset()
-        done = False
-        time_steps = 0
-        rewards = 0
-        while not done:
-            self.env.render()
-            action = self.worker.get_action(observation)
-            observation, reward, done, info = self.env.step(action)
-            rewards += reward
-            time_steps += 1
+        self.episode = 1
+        self.step_render()
         print("Episode {} finished after {} time steps"
-              .format(1, time_steps + 1))
-        print("Collected rewards:", rewards)
+              .format(1, self.time_steps))
+        print("Collected rewards:", self.rewards)
         self.stop()
 
 
