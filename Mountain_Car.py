@@ -56,10 +56,10 @@ PID_POINT = (0, 0, 0)
 NODE_CART = (0, 0)
 NODE_POINT = (0, 0)
 
-pid_cart: controllers.InOutModel
-pid_point: controllers.InOutModel
-node_cart: controllers.InOutModel
-node_point: controllers.InOutModel
+pid_cart: controllers.IOModel
+pid_point: controllers.IOModel
+node_cart: controllers.IOModel
+node_point: controllers.IOModel
 manager: controllers.BaseManager | \
          controllers.LearningController
 

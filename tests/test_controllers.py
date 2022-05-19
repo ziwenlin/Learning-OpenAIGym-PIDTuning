@@ -11,7 +11,7 @@ NODE = (0.5, 0.1, 2, 0)
 class BaseTest:
     class IOModel(TestCase):
         def setUp(self) -> None:
-            self.model = controllers.InOutModel()
+            self.model = controllers.IOModel()
 
         def test_reset_output_is_implemented(self):
             self.assertEqual(0, self.model.output)

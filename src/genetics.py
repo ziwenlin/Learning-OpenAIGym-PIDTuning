@@ -62,14 +62,14 @@ ROTATING_ALPHABET = RotatingList(ALPHABET_EXTENDED)
 
 class ModelManager:
     """
-    Class holds container of :class:`InOutModel` and handles the
+    Class holds container of :class:`IOModel` and handles the
     process of switching between different io configurations.
     """
 
     def __init__(self):
-        self.models: list[controllers.InOutModel] = []
+        self.models: list[controllers.IOModel] = []
 
-    def add_model(self, controller: controllers.InOutModel) -> None:
+    def add_model(self, controller: controllers.IOModel) -> None:
         """
         Adds an io controller to the manager configuration.
 
@@ -204,7 +204,7 @@ class GeneticEvolutionController(controllers.LearningController,
         """
         Adds an io controller to the genetic setup.
 
-        :param controllers.InOutModel controller:
+        :param controllers.IOModel controller:
         """
         self.model_manager.add_model(controller)
         io_base = controller.get_model()

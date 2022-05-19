@@ -43,12 +43,12 @@ NODE_POINT = (0, 0, 0)
 NODE_PENDULUM = (0, 0, 0)
 NODE_DIRECT = (0, 0, 0)
 
-pid_point: controllers.InOutModel
-pid_direct: controllers.InOutModel
-pid_pendulum: controllers.InOutModel
-node_point: controllers.InOutModel
-node_direct: controllers.InOutModel
-node_pendulum: controllers.InOutModel
+pid_point: controllers.IOModel
+pid_direct: controllers.IOModel
+pid_pendulum: controllers.IOModel
+node_point: controllers.IOModel
+node_direct: controllers.IOModel
+node_pendulum: controllers.IOModel
 manager: controllers.BaseManager | \
          controllers.LearningController
 

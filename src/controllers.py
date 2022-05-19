@@ -12,7 +12,7 @@ from src import settings
 from src.mutations import mutate_io_model
 
 
-class InOutModel:
+class IOModel:
     """
     Base class that provides the interface for any models.
 
@@ -236,9 +236,9 @@ class EnvironmentWorker:
         return 0
 
 
-class PIDModel(InOutModel):
+class PIDModel(IOModel):
     """
-    Implements from :class:`InOutModel`. Uses PID based model
+    Implements from :class:`IOModel`. Uses PID based model
     to calculate a output based on the input values.
 
 
@@ -275,9 +275,9 @@ class PIDModel(InOutModel):
         self.value_i = 0
 
 
-class NodeModel(InOutModel):
+class NodeModel(IOModel):
     """
-    Implements from :class:`InOutModel`. Uses weight based model
+    Implements from :class:`IOModel`. Uses weight based model
     to calculate a output based on the input values.
     """
 
@@ -343,15 +343,15 @@ class ImprovingController(LearningController):
 
 class ImprovingModelController(ImprovingController):
     """
-    Implements from :class:`InOutModel` and :class:`ImprovingController`
+    Implements from :class:`IOModel` and :class:`ImprovingController`
     and is base class that provides improvement based learning to any
-    instances of :class:`InOutModel`. Uses reward based calculations to
+    instances of :class:`IOModel`. Uses reward based calculations to
     decide whether improvements have been made.
     """
 
     def __init__(self, name='', preset=(0, 0, 0)):
         ImprovingController.__init__(self, name)
-        self.model = InOutModel()
+        self.model = IOModel()
         self.current_model = preset
         self.previous_model = preset
 
