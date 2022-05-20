@@ -1,3 +1,11 @@
+"""
+This module holds the variables for the whole project.
+
+Changing one variable in this file affects all the scripts.
+Better modify the variable inside the script by importing
+this file as a module.
+"""
+
 EPISODE_MULTIPLIER = 10
 EPISODE_CAP = EPISODE_MULTIPLIER * 1000
 EPISODE_SHOW = EPISODE_MULTIPLIER * 100
@@ -20,14 +28,29 @@ MULTIPLIER_RANDOM = 0.1
 IMPROVEMENT_THRESHOLD = 0.95
 IMPROVEMENT_THRESHOLD_RNG = 1.0 - IMPROVEMENT_THRESHOLD
 
+MODULE_DICT_SKIP = ('EPISODE_MULTIPLIER', 'EPSILON_DECAY_RATE',)
 
-def recalculate_threshold(minimum):
+
+def recalculate_improvement_threshold(minimum):
+    """
+    Recalculates the threshold for random improvement.
+
+    :param minimum: Threshold minimum value
+    """
     global IMPROVEMENT_THRESHOLD, IMPROVEMENT_THRESHOLD_RNG
     IMPROVEMENT_THRESHOLD = minimum
     IMPROVEMENT_THRESHOLD_RNG = 1.0 - IMPROVEMENT_THRESHOLD
 
 
-def recalculate(multiplier):
+def recalculate_episode(multiplier):
+    """
+    Recalculates the threshold for EPISODE_CAP,
+    EPISODE_SHOW, EPISODE_PRINT, and EPSILON_DECAY_RATE
+    with the given multiplier.
+
+    :param multiplier: Multiplier of how many episodes need to run
+    :return: None
+    """
     global EPISODE_CAP, EPISODE_SHOW, EPISODE_PRINT, EPSILON_DECAY_RATE
     global EPISODE_MULTIPLIER
     EPISODE_MULTIPLIER = multiplier
@@ -38,6 +61,11 @@ def recalculate(multiplier):
 
 
 def get_dict():
+    """
+    Processes variables to return copy of the module as dictionary.
+
+    :return: A copy of the modules variables
+    """
     return {
         'EPISODE_CAP': EPISODE_CAP,
         'EPISODE_SHOW': EPISODE_SHOW,
@@ -58,10 +86,16 @@ def get_dict():
         'MULTIPLIER_RAND': MULTIPLIER_RANDOM,
     }
 
+
 def set_dict(info):
+    """
+    Processes dictionary values and update the modules variable
+    values to match the passed dictionary values.
+
+    :param dict[str, int | float] info: Modified copy of this module
+    :return: None
+    """
     for id, value in info:
-        if id in ['EPISODE_MULTIPLIER','EPSILON_DECAY_RATE',]:
+        if id in MODULE_DICT_SKIP:
             continue
         globals()[id] = value
-
-
