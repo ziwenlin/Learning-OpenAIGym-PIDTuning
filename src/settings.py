@@ -19,27 +19,32 @@ class EPISODE:
     def recalculate(multipliier):
         """
         Recalculates the threshold for EPISODE_CAP,
-        EPISODE_SHOW, EPISODE_PRINT, and EPSILON_DECAY_RATE
+        EPISODE_SHOW, EPISODE_PRINT, and EPSILON.DECAY_RATE
         with the given multiplier.
 
         :param multiplier: Multiplier of how many episodes need to run
         :return: None
         """
-        global EPSILON_DECAY_RATE
         EPISODE.MULTIPLIER = multipliier
         EPISODE.CAP = multipliier * 1000
         EPISODE.SHOW = multipliier * 100
         EPISODE.PRINT = multipliier * 10
-        EPSILON_DECAY_RATE = EPSILON_DISCOUNT ** (10 / EPISODE.CAP)
+        EPSILON.recalculate()
+
+
+class EPSILON:
+    VALUE = 0.9
+    CAP = 0.05
+    DISCOUNT = 0.95
+    DECAY_RATE = DISCOUNT ** (10 / EPISODE.CAP)
+
+    @staticmethod
+    def recalculate():
+        EPSILON.DECAY_RATE = EPSILON.DISCOUNT ** (10 / EPISODE.CAP)
 
 
 TIME_STEPS = 200
 EPISODE_LEARN = 20
-
-EPSILON = 0.9
-EPSILON_CAP = 0.05
-EPSILON_DISCOUNT = 0.95
-EPSILON_DECAY_RATE = EPSILON_DISCOUNT ** (10 / EPISODE.CAP)
 
 MULTIPLIER_EPSILON = 10
 MULTIPLIER_IMPROVE = 0.8
@@ -48,7 +53,7 @@ MULTIPLIER_RANDOM = 0.1
 IMPROVEMENT_THRESHOLD = 0.95
 IMPROVEMENT_THRESHOLD_RNG = 1.0 - IMPROVEMENT_THRESHOLD
 
-MODULE_DICT_SKIP = ('EPISODE.MULTIPLIER', 'EPSILON_DECAY_RATE',)
+MODULE_DICT_SKIP = ('EPISODE.MULTIPLIER', 'EPSILON.DECAY_RATE',)
 
 
 def recalculate_improvement_threshold(minimum):
@@ -78,10 +83,9 @@ def get_dict():
         'TIME_STEPS': TIME_STEPS,
         'EPISODE_LEARN': EPISODE_LEARN,
 
-        'EPSILON': EPSILON,
-        'EPSILON_CAP': EPSILON_CAP,
-        'EPSILON_DISCOUNT': EPSILON_DISCOUNT,
-        # 'EPSILON_DECAY_RATE': EPSILON_DECAY_RATE,
+        'EPSILON.VALUE': EPSILON.VALUE,
+        'EPSILON.CAP': EPSILON.CAP,
+        'EPSILON.DISCOUNT': EPSILON.DISCOUNT,
 
         'MULTIPLIER_EPSILON': MULTIPLIER_EPSILON,
         'MULTIPLIER_IMPROVE': MULTIPLIER_IMPROVE,
@@ -103,5 +107,8 @@ def set_dict(info):
         split = id.split('.')
         if 'EPISODE' in split:
             setattr(EPISODE, split[1], value)
+            continue
+        if 'EPSILON' in split:
+            setattr(EPSILON, split[1], value)
             continue
         globals()[id] = value

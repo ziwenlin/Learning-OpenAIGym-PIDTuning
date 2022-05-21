@@ -558,3 +558,16 @@ class TestMutations(TestCase):
         with mock.patch('numpy.random.rand', lambda: 1.0):
             result = mutations.mutate_io_model((0, 0), (0, 0))
         self.assertNotEqual((0, 0), result)
+
+# class TestEnvironmentSeedGenerator(TestCase):
+#     def test_reset(self):
+#         self.fail()
+#
+#     def test_set_generator(self):
+#         self.fail()
+#
+#     def test_next_seed(self):
+#         self.fail()
+#
+#     def test_get_seed(self):
+#         self.fail()

@@ -605,7 +605,7 @@ class EnvironmentMonitor:
         result['lowest'] = round(lowest_value, 2)
         result['median'] = round(median_value, 2)
         result['middle'] = round(middle_value, 2)
-        result['epsilon'] = round(settings.EPSILON, 3)
+        result['epsilon'] = round(settings.EPSILON.VALUE, 3)
         result['multiplier'] = round(settings.MULTIPLIER_EPSILON, 3)
 
 
@@ -639,10 +639,10 @@ class EnvironmentManager:
         self.env.close()
 
     def step_epsilon(self):
-        if settings.MULTIPLIER_EPSILON > settings.EPSILON_CAP:
-            settings.MULTIPLIER_EPSILON *= settings.EPSILON_DECAY_RATE
-        if settings.EPSILON > settings.EPSILON_CAP:
-            settings.EPSILON *= settings.EPSILON_DECAY_RATE
+        if settings.MULTIPLIER_EPSILON > settings.EPSILON.CAP:
+            settings.MULTIPLIER_EPSILON *= settings.EPSILON.DECAY_RATE
+        if settings.EPSILON.VALUE > settings.EPSILON.CAP:
+            settings.EPSILON.VALUE *= settings.EPSILON.DECAY_RATE
 
     def step_monitor(self):
         self.logger.monitor({

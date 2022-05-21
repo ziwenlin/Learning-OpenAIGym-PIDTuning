@@ -22,7 +22,7 @@ def mutate_io_model(current, previous, io_type=''):
     current_index = controllers.get_index_difference(current, previous)
 
     # Explore or improve, at the start it will explore more
-    if current_index > -1 and numpy.random.rand() > settings.EPSILON:
+    if current_index > -1 and numpy.random.rand() > settings.EPSILON.VALUE:
         # Improve the previously changed controller setting
         improve = get_improved_float(current, previous, current_index)
         current[current_index] += improve
