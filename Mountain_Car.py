@@ -46,7 +46,7 @@ def action_space(output):
     return action
 
 
-settings.EPISODE_CAP *= 10
+settings.EPISODE.CAP *= 10
 settings.TIME_STEPS = 250
 
 PID_CART = (0, 0, 0)

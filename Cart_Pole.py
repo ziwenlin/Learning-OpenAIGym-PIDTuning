@@ -20,7 +20,7 @@ class CartPole(controllers.EnvironmentWorker):
         intervals = settings.EPISODE_LEARN
         progress = (episode // intervals) * intervals
         unluck = numpy.random.random() * 2 - 1
-        self.progress = progress / settings.EPISODE_CAP
+        self.progress = progress / settings.EPISODE.CAP
         self.difficulty = self.progress * unluck
         self.position = 2 * self.difficulty
 
@@ -54,7 +54,7 @@ def action_space(output):
     return action
 
 
-settings.EPISODE_CAP *= 10
+settings.EPISODE.CAP *= 10
 settings.TIME_STEPS = 500
 
 PID_CART = (-0.5298, 0.4768, -0.488)

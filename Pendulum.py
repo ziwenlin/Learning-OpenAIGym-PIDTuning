@@ -32,8 +32,8 @@ def action_space(output):
     return [action]
 
 
-settings.recalculate_episode(10)
-settings.EPISODE_CAP *= 10
+settings.EPISODE.recalculate(10)
+settings.EPISODE.CAP *= 10
 
 PID_POINT = (0, 0, 0)
 PID_PENDULUM = (0, 0, 0)

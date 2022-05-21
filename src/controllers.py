@@ -654,13 +654,13 @@ class EnvironmentManager:
 
     def step_print(self):
         episode, time_steps = self.episode, self.time_steps
-        if not settings.EPISODE_PRINT_TOGGLE:
+        if not settings.EPISODE.PRINT_TOGGLE:
             pass
-        elif (episode % settings.EPISODE_PRINT == 0
-              or episode % settings.EPISODE_SHOW == 0):
+        elif (episode % settings.EPISODE.PRINT == 0
+              or episode % settings.EPISODE.SHOW == 0):
             print("Episode {} finished after {} time steps"
                   .format(episode, time_steps))
-        if episode % settings.EPISODE_SHOW == 0:
+        if episode % settings.EPISODE.SHOW == 0:
             log = self.logger.get_log()
             log += f'{self.agent.name} = {self.agent.get_string()}'
             print(log, '\n')
@@ -680,7 +680,7 @@ class EnvironmentManager:
             self.agent.explore()
 
     def step_render(self):
-        if self.episode % settings.EPISODE_SHOW != 1:
+        if self.episode % settings.EPISODE.SHOW != 1:
             return
         # Get best episode to show
         time_steps, rewards, done = 1, 0, False
@@ -716,7 +716,7 @@ class EnvironmentManager:
         self.rewards = rewards
 
     def step_end(self):
-        if self.episode > settings.EPISODE_CAP:
+        if self.episode > settings.EPISODE.CAP:
             self.stop()
         self.episode += 1
 
