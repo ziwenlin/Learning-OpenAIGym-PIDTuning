@@ -3,7 +3,7 @@ import numpy
 from src import controllers
 from src import settings
 
-rng = numpy.random.default_rng(100)
+rng = numpy.random.default_rng(1000)
 
 
 def mutate_io_model(current, previous, io_type=''):

@@ -3,6 +3,8 @@ import numpy
 import controllers
 from mutations import mutate_io_controller_random
 
+rng = numpy.random.default_rng(2000)
+
 ALPHABET = 'A B C D E F G H I J K L M N O P Q R S T U V W X Y Z'.split(' ')
 ALPHABET_EXTENDED = [a for a in ALPHABET]
 ALPHABET_EXTENDED += [
@@ -148,20 +150,20 @@ class GeneticEvolutionController(controllers.LearningController,
         replication = int(population * 0.2)
 
         while elitism + replication + breeding + mutation != population:
-            rng = numpy.random.rand()
-            if rng < 0.1:
+            chance = rng.random()
+            if chance < 0.1:
                 elitism += 1
                 continue
-            rng += -0.1
-            if rng < 0.2:
+            chance += -0.1
+            if chance < 0.2:
                 replication += 1
                 continue
-            rng += -0.2
-            if rng < 0.3:
+            chance += -0.2
+            if chance < 0.3:
                 breeding += 1
                 continue
-            rng += -0.3
-            if rng < 0.4:
+            chance += -0.3
+            if chance < 0.4:
                 mutation += 1
                 continue
 
@@ -248,9 +250,9 @@ def genetics_elitism(ranked_pool, progress_pool, elitism):
 def genetics_replication(ranked_pool, progress_pool, replication):
     while replication > 0:
         for genetic_info in ranked_pool:
-            if numpy.random.rand() > genetic_info['rank']:
+            if rng.random() > genetic_info['rank']:
                 continue
-            if numpy.random.rand() > 0.2:
+            if rng.random() > 0.2:
                 continue
             progress_pool.append(genetic_info)
             replication += -1
@@ -293,9 +295,9 @@ def genetics_breeding(ranked_pool, progress_pool, breeding):
 def genetics_mutation(ranked_pool, progress_pool, mutation):
     while mutation > 0:
         for genetic_info in ranked_pool:
-            if numpy.random.rand() > genetic_info['rank']:
+            if rng.random() > genetic_info['rank']:
                 continue
-            if numpy.random.rand() > 0.2:
+            if rng.random() > 0.2:
                 continue
             genetics = genetic_info['gene']
             genetics = mutate_genetics(genetics)
@@ -317,9 +319,9 @@ def genetics_mutation(ranked_pool, progress_pool, mutation):
 def generate_breeding_pool(ranked_pool):
     pool_a = []
     for genetic_info in ranked_pool:
-        if numpy.random.rand() > genetic_info['rank']:
+        if rng.random() > genetic_info['rank']:
             continue
-        if numpy.random.rand() > 0.2:
+        if rng.random() > 0.2:
             continue
         pool_a.append(genetic_info)
     return pool_a
@@ -328,7 +330,7 @@ def generate_breeding_pool(ranked_pool):
 def breed_genetics(genetics_a, genetics_b):
     genetics_new = []
     for a, b in zip(genetics_a, genetics_b):
-        if numpy.random.rand() > 0.5:
+        if rng.random() > 0.5:
             genetics_new.append(a)
         else:
             genetics_new.append(b)
@@ -336,7 +338,7 @@ def breed_genetics(genetics_a, genetics_b):
 
 
 def mutate_genetics(genetic_base):
-    index = numpy.random.randint(len(genetic_base))
+    index = rng.integers(len(genetic_base))
     io_controller = genetic_base[index]
     genetic_base[index] = mutate_io_controller_random(io_controller)
     return genetic_base
