@@ -1,5 +1,5 @@
 import gym
-import numpy.random
+import numpy
 
 from src import settings
 from src import controllers
@@ -14,12 +14,14 @@ class CartPole(controllers.EnvironmentWorker):
 
     def reset(self, seed=None):
         if seed is not None:
-            numpy.random.seed(seed)
+            rng = numpy.random.default_rng(seed)
+        else:
+            rng = numpy.random.default_rng()
         self.episode += 1
         episode = self.episode
         intervals = settings.EPISODE_LEARN
         progress = (episode // intervals) * intervals
-        unluck = numpy.random.random() * 2 - 1
+        unluck = rng.random() * 2 - 1
         self.progress = progress / settings.EPISODE.CAP
         self.difficulty = self.progress * unluck
         self.position = 2 * self.difficulty
