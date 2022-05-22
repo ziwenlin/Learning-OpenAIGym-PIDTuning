@@ -630,7 +630,7 @@ class EnvironmentManager:
         self.episode = 1
         self.running = False
         self.rewards = 0
-        self.steps = 0
+        self.time_steps = 0
 
     def start(self):
         self.running = True
