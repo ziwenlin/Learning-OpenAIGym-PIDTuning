@@ -1,8 +1,8 @@
 import gym
 import numpy
 
-from src import settings
 from src import controllers
+from src import settings
 
 
 class CartPole(controllers.EnvironmentWorker):
@@ -59,28 +59,23 @@ def action_space(output):
 settings.EPISODE.CAP *= 10
 settings.TIME_STEPS = 500
 
-PID_CART = (-0.5298, 0.4768, -0.488)
-PID_CART = (-0.2419, 1.0445, -0.393)
-PID_CART = (-0.4752, 1.1208, -0.393)
-PID_CART = (0, 0, 0)
-PID_CART = (-0.2195, 0.7622, 0.0)
-PID_CART = (-0.2931, 1.2504, 0.0)
-PID_CART = (-0.5055, 1.3731, 0.4458)
-PID_CART = (0, 0, 0)
+PID_CART = (-4.4474, 0.0178, -0.2146)
+PID_POLE = (0.0541, 0.0496, 1.1687)
+PID_POINT = (7.3956, -0.0323, -1.1408)
+NODE_CART = (1.2006, -0.2669, 2.9814, 0.0465)
+NODE_POLE = (-0.5668, 2.5678, 0.8946, 0.2716)
+NODE_POINT = (0.467, 0.93, 1.509, 1.0715)
 
-PID_POLE = (-5.7916, 4.8044, -7.0568)
-PID_POLE = (-5.7777, 4.8044, -6.6541)
-PID_POLE = (-6.1015, 5.4192, -6.6313)
-PID_POLE = (-6.3068, 5.3475, -7.2753)
-PID_POLE = (-7.4381, 5.8662, -7.0927)
-PID_POLE = (-8.1293, 6.5284, -6.528)
-PID_POLE = (-7.8758, 6.8384, -6.6159)
+PID_CART = (1.6879, 0.0301, 0.4624)
+PID_POLE = (-6.4113, -0.057, -1.8253)
+PID_POINT = (-3.0372, -0.0438, -3.6371)
+NODE_CART = (-0.8467, -0.7785, -0.4911, -0.0735)
+NODE_POLE = (-0.8702, 0.1992, 0.8139, 0.7139)
+NODE_POINT = (0.9203, 0.6967, -0.0531, 0.1691)
+
+PID_CART = (0, 0, 0)
 PID_POLE = (0, 0, 0)
-
-PID_POINT = (-0.3501, -0.0706, 0.2518)
-PID_POINT = (-0.179, -0.0706, 0.3005)
 PID_POINT = (0, 0, 0)
-
 NODE_POLE = (0, 0, 0, 0)
 NODE_CART = (0, 0, 0, 0)
 NODE_POINT = (0, 0, 0, 0)
