@@ -4,11 +4,13 @@ import textwrap
 import time
 
 import gym
-import numpy as np
+import numpy
 from tabulate import tabulate
 
 from src import settings
 from src.mutations import mutate_io_model
+
+rng = numpy.random.default_rng(4000)
 
 
 class IOModel:
@@ -804,7 +806,7 @@ def get_is_improvement(bypass, new_values, old_values, func, threshold):
 def get_is_improving_random(improvements, new_values, old_values):
     avg, low, high = improvements
     threshold = settings.IMPROVEMENT_THRESHOLD
-    threshold += settings.IMPROVEMENT_THRESHOLD_RNG * np.random.rand()
+    threshold += settings.IMPROVEMENT_THRESHOLD_RNG * rng.random()
     low = get_is_improvement(low, new_values, old_values, min, threshold)
     high = get_is_improvement(high, new_values, old_values, max, threshold)
     avg = get_is_improvement(avg, new_values, old_values, sum, threshold)
@@ -847,9 +849,9 @@ def get_index_random(index_range, index_skip=-1) -> int:
     :param int index_skip: Index that is not allowed to be picked
     :return: Random index number
     """
-    random_index = np.random.randint(index_range)
+    random_index = rng.integers(index_range)
     while random_index == index_skip:
-        random_index = np.random.randint(index_range)
+        random_index = rng.integers(index_range)
     return random_index
 
 
