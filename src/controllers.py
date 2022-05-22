@@ -2,7 +2,6 @@ import abc
 import statistics
 import textwrap
 import time
-import traceback
 
 import gym
 import numpy as np
@@ -612,7 +611,7 @@ class EnvironmentMonitor:
 class EnvironmentManager:
     """
     Class manages the environment, episodes, agent, worker
-    and all components method calls.
+    and all components' method calls.
     """
 
     def __init__(self,
@@ -722,12 +721,9 @@ class EnvironmentManager:
 
     def run(self):
         self.start()
+        self.stop_event()
         while self.running:
-            try:
-                self.run_sequence()
-            except KeyboardInterrupt:
-                print(traceback.format_exc())
-                break
+            self.run_sequence()
         self.stop()
 
     def run_sequence(self):
@@ -747,6 +743,19 @@ class EnvironmentManager:
               .format(1, self.time_steps))
         print("Collected rewards:", self.rewards)
         self.stop()
+
+    def stop_event(self):
+        import tkinter, threading
+        def thread():
+            root = tkinter.Tk()
+            text = tkinter.Label(root, text='Close to stop training')
+            text.pack()
+            root.mainloop()
+            self.running = False
+
+        th = threading.Thread(target=thread, daemon=True)
+        th.start()
+
 
 
 def get_tuple_string(array: tuple) -> str:
