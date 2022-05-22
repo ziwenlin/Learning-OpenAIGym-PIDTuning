@@ -1,4 +1,4 @@
-import numpy.random
+import numpy
 
 import controllers
 from mutations import mutate_io_controller_random

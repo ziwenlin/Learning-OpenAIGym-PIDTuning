@@ -1,8 +1,9 @@
 import numpy
 
+from src import controllers
 from src import settings
 
-from src import controllers
+rng = numpy.random.default_rng(100)
 
 
 def mutate_io_model(current, previous, io_type=''):
@@ -22,7 +23,7 @@ def mutate_io_model(current, previous, io_type=''):
     current_index = controllers.get_index_difference(current, previous)
 
     # Explore or improve, at the start it will explore more
-    if current_index > -1 and numpy.random.rand() > settings.EPSILON.VALUE:
+    if current_index > -1 and rng.random() > settings.EPSILON.VALUE:
         # Improve the previously changed controller setting
         improve = get_improved_float(current, previous, current_index)
         current[current_index] += improve
@@ -48,7 +49,7 @@ def mutate_io_controller_random(controller, index=-1, io_type=''):
     if type(controller) is not list:
         controller = list(controller)
     if index == -1:
-        index = numpy.random.randint(len(controller))
+        index = rng.integers(len(controller))
     multiplier = get_io_multiplier(index, io_type)
     controller[index] += get_random_float() * multiplier
     return tuple(controller)
@@ -96,4 +97,4 @@ def get_random_float():
     :rtype: float
     """
     improve = settings.MULTIPLIER_RANDOM * settings.MULTIPLIER_EPSILON
-    return (numpy.random.rand() - 0.5) * improve
+    return (rng.random() - 0.5) * improve
