@@ -88,6 +88,7 @@ node_cart: controllers.IOModel
 node_point: controllers.IOModel
 manager: controllers.BaseManager | \
          controllers.LearningController
+env_manager: controllers.EnvironmentManager
 
 
 def generate_improving_model():
@@ -115,12 +116,13 @@ def generate_improving_model():
 
 
 def main():
+    global env_manager
     generate_improving_model()
     env = gym.make('CartPole-v1')
-    environment = controllers.EnvironmentManager(env, manager, CartPole(env))
+    env_manager = controllers.EnvironmentManager(env, manager, CartPole(env))
     # environment.controller.episode = environment.episode = Settings.EPISODE_CAP // 10 * 7
 
-    environment.run()
+    env_manager.run()
     for i in range(manager.get_size()):
         manager.select_controller(i)
         print(manager.name, '=', manager.get_string())
