@@ -206,7 +206,7 @@ class EnvironmentWorker:
         self.difficulty = 0
 
     @abc.abstractmethod
-    def reset(self) -> None:
+    def reset(self, seed: int = None) -> None:
         """
         Resets all attributes before proceeding to the next
         episode in the gym environment.
@@ -521,6 +521,37 @@ class ImprovingControllerManager(ImprovingController,
             controller.reset()
 
 
+class EnvironmentSeedManager:
+    """
+    Class controls the seed generator to keep consistency
+    between multiple episodes.
+    """
+    output: int
+    seed: int
+
+    def __init__(self):
+        self.output = 0
+        self.seed = 0
+        self.generator = numpy.random.default_rng(0)
+
+    def reset(self):
+        self.set_generator(self.seed)
+
+    def set_generator(self, seed: int):
+        self.seed = seed
+        self.generator = numpy.random.default_rng(seed)
+
+    def get_generator(self):
+        return self.seed
+
+    def next_seed(self):
+        self.output = int(self.generator.random() * 1000)
+        return self.output
+
+    def get_seed(self):
+        return self.output
+
+
 class EnvironmentMonitor:
     """
     Class monitors the episode values, processes the
@@ -597,6 +628,7 @@ class EnvironmentMonitor:
 
         get_result('reward')
         get_result('steps')
+        get_result('seed')
         get_result('difficulty')
         get_result('episode')
 
@@ -626,6 +658,7 @@ class EnvironmentManager:
 
         self.agent = agent
 
+        self.seed_manager = EnvironmentSeedManager()
         self.fps_time = time.time()
         self.episode = 1
         self.running = False
@@ -651,6 +684,7 @@ class EnvironmentManager:
             'reward': self.rewards,
             'difficulty': self.worker.difficulty,
             'steps': self.time_steps,
+            'seed': self.seed_manager.output,
         })
 
     def step_print(self):
@@ -679,6 +713,7 @@ class EnvironmentManager:
             self.logger.process(self.episode)
             self.agent.reflect()
             self.agent.explore()
+            self.seed_manager.reset()
 
     def step_render(self):
         if self.episode % settings.EPISODE.SHOW != 1:
@@ -702,8 +737,9 @@ class EnvironmentManager:
 
     def step_episode(self):
         time_steps, rewards, done = 1, 0, False
-        observation = self.env.reset()
-        self.worker.reset()
+        seed = self.seed_manager.next_seed()
+        observation = self.env.reset(seed=seed)
+        self.worker.reset(seed=seed)
         self.agent.reset()
         while not done:
             action = self.worker.get_action(observation)
@@ -748,6 +784,7 @@ class EnvironmentManager:
 
     def stop_event(self):
         import tkinter, threading
+
         def thread():
             root = tkinter.Tk()
             text = tkinter.Label(root, text='Close to stop training')
@@ -757,7 +794,6 @@ class EnvironmentManager:
 
         th = threading.Thread(target=thread, daemon=True)
         th.start()
-
 
 
 def get_tuple_string(array: tuple) -> str:

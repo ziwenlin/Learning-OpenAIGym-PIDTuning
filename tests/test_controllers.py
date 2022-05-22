@@ -559,15 +559,31 @@ class TestMutations(TestCase):
             result = mutations.mutate_io_model((0, 0), (0, 0))
         self.assertNotEqual((0, 0), result)
 
-# class TestEnvironmentSeedGenerator(TestCase):
-#     def test_reset(self):
-#         self.fail()
-#
-#     def test_set_generator(self):
-#         self.fail()
-#
-#     def test_next_seed(self):
-#         self.fail()
-#
-#     def test_get_seed(self):
-#         self.fail()
+class TestEnvironmentSeedManager(TestCase):
+    def setUp(self) -> None:
+        self.generator = controllers.EnvironmentSeedManager()
+
+    def test_reset(self):
+        a = self.generator.next_seed()
+        for _ in range(20):
+            self.generator.next_seed()
+        self.generator.reset()
+        self.assertEqual(a, self.generator.next_seed())
+
+    def test_set_generator(self):
+        self.generator.set_generator(10)
+        a = self.generator.next_seed()
+        for _ in range(20):
+            self.generator.next_seed()
+        self.generator.set_generator(100)
+        self.assertNotEqual(a, self.generator.next_seed())
+
+    def test_next_seed(self):
+        a = self.generator.next_seed()
+        b = self.generator.next_seed()
+        self.assertNotEqual(a, b)
+
+    def test_get_seed(self):
+        a = self.generator.next_seed()
+        self.assertEqual(a, self.generator.get_seed())
+        self.assertIsInstance(a, int)
